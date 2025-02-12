@@ -43,7 +43,6 @@ class CameraPreview @JvmOverloads constructor(
     private var captureOrientation: Int = 0
 
     private var previewSize: CameraSize = CameraSize(0, 0)
-    private var photoSize: CameraSize = CameraSize(0, 0)
 
     private var cameraFacing: CameraFacing = CameraFacing.FRONT
     private var surfaceTexture: CameraSurfaceTexture? = null
@@ -139,9 +138,6 @@ class CameraPreview @JvmOverloads constructor(
         cameraState = CameraState.CAMERA_CLOSED
     }
 
-    override fun onCameraError() {
-    }
-
     override fun onPreviewStarted() {
         cameraState = CameraState.PREVIEW_STARTED
         previewStartContinuation?.resume(Unit)
@@ -150,9 +146,6 @@ class CameraPreview @JvmOverloads constructor(
 
     override fun onPreviewStopped() {
         cameraState = CameraState.PREVIEW_STOPPED
-    }
-
-    override fun onPreviewError() {
     }
 
     enum class LifecycleState {
@@ -222,10 +215,6 @@ class CameraPreview @JvmOverloads constructor(
                 else -> CameraSize(previewSize.height, previewSize.width)
             }
 
-            photoSize = previewSize
-
-            cameraApi.setPreviewSize(previewSize)
-            cameraApi.setPhotoSize(photoSize)
             cameraApi.startPreview(surfaceTexture)
         } else {
             it.resumeWithException(IllegalStateException())
