@@ -11,8 +11,6 @@ extern "C" {
 
 JNI_METHOD(jlong, create)(JNIEnv *env, jobject obj);
 
-JNI_METHOD(void, nativeInit)(JNIEnv *env, jobject obj, jlong _surfaceView);
-
 JNI_METHOD(void, nativeOnSurfaceCreated)(JNIEnv *env, jobject obj, jlong _surfaceView);
 
 JNI_METHOD(void, nativeOnSurfaceChanged)(JNIEnv *env, jobject obj, jlong _surfaceView, jint width,

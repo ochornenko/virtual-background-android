@@ -20,8 +20,6 @@ public:
 
     auto DrawTexture(GLuint texture, int32_t textureWidth, int32_t textureHeight) const -> void;
 
-    auto Release() -> void;
-
 private:
     int32_t m_surfaceWidth;
     int32_t m_surfaceHeight;

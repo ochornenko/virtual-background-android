@@ -11,6 +11,10 @@ cmake_minimum_required(VERSION 3.22.1)
 # build script scope).
 project("native-lib")
 
+set(LIBS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../libs/${ANDROID_ABI}")
+set(TENSORFLOW_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/tensorflow")
+set(FLAT_BUFFERS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/flatbuffers/include")
+
 # Creates and names a library, sets it as either STATIC
 # or SHARED, and provides the relative paths to its source code.
 # You can define multiple libraries, and CMake builds them for you.
@@ -30,7 +34,8 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         CameraSurfaceViewJNI.cpp
         CameraSurfaceView.cpp
         CameraSurfaceTextureJNI.cpp
-        CameraSurfaceTexture.cpp)
+        CameraSurfaceTexture.cpp
+        CameraVirtualBackgroundProcessor.cpp)
 
 # Specifies libraries CMake should link to your target library. You
 # can link libraries from various origins, such as libraries defined in this
@@ -39,4 +44,9 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         # List libraries link to the target library
         android
         log
-        ${GLESv2-lib})
+        ${GLESv2-lib}
+        ${LIBS_PATH}/libtensorflowlite.so)
+
+target_include_directories(${CMAKE_PROJECT_NAME}
+        PRIVATE "${TENSORFLOW_SOURCE_DIR}"
+        PRIVATE "${FLAT_BUFFERS_SOURCE_DIR}")

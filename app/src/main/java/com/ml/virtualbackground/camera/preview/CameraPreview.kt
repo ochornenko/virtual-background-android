@@ -62,6 +62,7 @@ class CameraPreview @JvmOverloads constructor(
         cameraSurfaceView.cameraSurfaceTextureListener = object : CameraSurfaceTextureListener {
             override fun onSurfaceReady(cameraSurfaceTexture: CameraSurfaceTexture) {
                 surfaceTexture = cameraSurfaceTexture
+                surfaceTexture?.init(context)
                 surfaceState = SurfaceState.SURFACE_AVAILABLE
                 if (lifecycleState == LifecycleState.STARTED || lifecycleState == LifecycleState.RESUMED) {
                     resume()
@@ -93,7 +94,8 @@ class CameraPreview @JvmOverloads constructor(
     }
 
     fun onDestroy() {
-
+        surfaceTexture?.release()
+        cameraSurfaceView.release()
     }
 
     private fun start(facing: CameraFacing) {

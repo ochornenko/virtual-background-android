@@ -97,9 +97,6 @@ auto CameraSurfaceView::DrawTexture(GLuint texture, int32_t textureWidth,
     glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_SHORT, VertexIndices());
 }
 
-auto CameraSurfaceView::Release() -> void {
-}
-
 const char *CameraSurfaceView::VertexShaderCode() {
     static const char vertexShader[] =
             "attribute vec4 aPosition;\n"

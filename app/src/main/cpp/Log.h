@@ -16,3 +16,12 @@
 #define LOGI(...)
 #define LOGV(...)
 #endif
+
+// Log an error and return false if condition fails
+#define CHECK(condition)                                                        \
+    do {                                                                        \
+        if (!(condition)) {                                                     \
+            LOGE("Check failed at %s:%u - %s", __FILE__, __LINE__, #condition); \
+            return;                                                             \
+        }                                                                       \
+    } while (0)

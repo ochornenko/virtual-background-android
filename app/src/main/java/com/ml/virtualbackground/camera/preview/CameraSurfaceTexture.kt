@@ -1,10 +1,16 @@
 package com.ml.virtualbackground.camera.preview
 
+import android.content.Context
+import android.content.res.AssetManager
 import android.graphics.SurfaceTexture
 import android.opengl.Matrix
 import com.ml.virtualbackground.camera.type.CameraSize
 
-class CameraSurfaceTexture(inputTexture: Int, val outputTexture: Int) :
+class CameraSurfaceTexture(
+    private val inputTexture: Int,
+    val outputTexture: Int,
+    private val backgroundTexture: Int,
+) :
     SurfaceTexture(inputTexture) {
     private var surfaceTexture = create()
     var size: CameraSize = CameraSize(0, 0)
@@ -17,8 +23,14 @@ class CameraSurfaceTexture(inputTexture: Int, val outputTexture: Int) :
     private val transformMatrix: FloatArray = FloatArray(16)
     private val extraTransformMatrix: FloatArray = FloatArray(16)
 
-    init {
-        nativeInit(surfaceTexture, inputTexture, outputTexture)
+    fun init(context: Context) {
+        nativeInit(
+            context.assets,
+            surfaceTexture,
+            inputTexture,
+            outputTexture,
+            backgroundTexture
+        )
         Matrix.setIdentityM(extraTransformMatrix, 0)
     }
 
@@ -44,7 +56,13 @@ class CameraSurfaceTexture(inputTexture: Int, val outputTexture: Int) :
 
     private external fun create(): Long
 
-    private external fun nativeInit(surfaceTexture: Long, inputTexture: Int, outputTexture: Int)
+    private external fun nativeInit(
+        assetManager: AssetManager,
+        surfaceTexture: Long,
+        inputTexture: Int,
+        outputTexture: Int,
+        backgroundTexture: Int
+    )
 
     private external fun nativeSetSize(surfaceTexture: Long, width: Int, height: Int)
 

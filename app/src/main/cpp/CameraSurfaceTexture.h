@@ -1,5 +1,7 @@
 #pragma once
 
+#include "CameraVirtualBackgroundProcessor.h"
+
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
@@ -13,18 +15,20 @@ public:
 
     virtual ~CameraSurfaceTexture();
 
-    auto Initialize(GLuint inputTexture, GLuint outputTexture) -> void;
+    auto Initialize(AAssetManager *assetManager, GLuint inputTexture,
+                    GLuint outputTexture, GLuint backgroundTexture) -> void;
 
     auto SetSize(int32_t width, int32_t height) -> void;
 
     auto UpdateTexImage(float *transformMatrix, float *rotationMatrix) const -> void;
 
 private:
+    std::unique_ptr<CameraVirtualBackgroundProcessor> m_pProcessor;
     int32_t m_width;
     int32_t m_height;
     GLuint m_inputTexture;
     GLuint m_framebuffer;
-    GLuint m_outputTexture;
+    GLuint m_texture;
     GLuint m_vertexBuffer;
     GLuint m_program;
     GLint m_position;

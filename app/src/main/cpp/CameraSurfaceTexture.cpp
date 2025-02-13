@@ -8,11 +8,12 @@ auto CameraSurfaceTexture::create() -> std::unique_ptr<CameraSurfaceTexture> {
 }
 
 CameraSurfaceTexture::CameraSurfaceTexture()
-        : m_width(0),
+        : m_pProcessor(std::make_unique<CameraVirtualBackgroundProcessor>()),
+          m_width(0),
           m_height(0),
           m_inputTexture(0),
           m_framebuffer(0),
-          m_outputTexture(0),
+          m_texture(0),
           m_vertexBuffer(0),
           m_program(0),
           m_position(0),
@@ -22,15 +23,36 @@ CameraSurfaceTexture::CameraSurfaceTexture()
 }
 
 CameraSurfaceTexture::~CameraSurfaceTexture() {
+    if (m_inputTexture !=0) {
+        glDeleteTextures(1, &m_inputTexture);
+        m_inputTexture = 0;
+    }
+
+    if (m_texture !=0) {
+        glDeleteTextures(1, &m_texture);
+        m_texture = 0;
+    }
+
+    if (m_framebuffer != 0) {
+        glDeleteFramebuffers(1, &m_framebuffer);
+        m_framebuffer = 0;
+    }
+
     if (m_vertexBuffer != 0) {
         glDeleteBuffers(1, &m_vertexBuffer);
         m_vertexBuffer = 0;
     }
+
+    if (m_program != 0) {
+        DeleteProgram(m_program);
+    }
+
+    m_pProcessor.reset();
 }
 
-auto CameraSurfaceTexture::Initialize(GLuint inputTexture, GLuint outputTexture) -> void {
+auto CameraSurfaceTexture::Initialize(AAssetManager *assetManager, GLuint inputTexture,
+                                      GLuint outputTexture, GLuint backgroundTexture) -> void {
     m_inputTexture = inputTexture;
-    m_outputTexture = outputTexture;
 
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, inputTexture);
     glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -44,11 +66,6 @@ auto CameraSurfaceTexture::Initialize(GLuint inputTexture, GLuint outputTexture)
 
     m_program = CreateProgram(VertexShaderCode(), FragmentShaderCode());
 
-    if (!m_program) {
-        LOGE("Could not create program.");
-        return;
-    }
-
     glUseProgram(m_program);
 
     m_position = glGetAttribLocation(m_program, "aPosition");
@@ -58,11 +75,7 @@ auto CameraSurfaceTexture::Initialize(GLuint inputTexture, GLuint outputTexture)
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-    if (glGetError() != GL_NO_ERROR) {
-        DeleteProgram(m_program);
-        LOGE("Could not create program.");
-        return;
-    }
+    m_pProcessor->Initialize(assetManager, outputTexture, backgroundTexture);
 }
 
 auto CameraSurfaceTexture::SetSize(int32_t width, int32_t height) -> void {
@@ -72,10 +85,14 @@ auto CameraSurfaceTexture::SetSize(int32_t width, int32_t height) -> void {
     if (glIsFramebuffer(m_framebuffer)) {
         glDeleteFramebuffers(1, &m_framebuffer);
     }
-
     glGenFramebuffers(1, &m_framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer);
-    glBindTexture(GL_TEXTURE_2D, m_outputTexture);
+
+    if (glIsTexture(m_texture)) {
+        glDeleteTextures(1, &m_texture);
+    }
+    glGenTextures(1, &m_texture);
+    glBindTexture(GL_TEXTURE_2D, m_texture);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
@@ -84,8 +101,10 @@ auto CameraSurfaceTexture::SetSize(int32_t width, int32_t height) -> void {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_outputTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_texture, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    m_pProcessor->SetSize(width, height);
 }
 
 auto
@@ -109,6 +128,8 @@ CameraSurfaceTexture::UpdateTexImage(float *transformMatrix, float *rotationMatr
     glEnableVertexAttribArray(m_texCoord);
     glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
     glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_SHORT, VertexIndices());
+
+    m_pProcessor->ProcessVideoFrame(m_width, m_height, m_vertexBuffer, m_texture);
 }
 
 auto CameraSurfaceTexture::VertexShaderCode() -> const char * {
