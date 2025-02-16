@@ -11,10 +11,11 @@ public:
 
     ~CameraVirtualBackgroundProcessor();
 
-    auto
-    Initialize(AAssetManager *assetManager, GLuint outputTexture, GLuint backgroundTexture) -> void;
+    auto Initialize(AAssetManager *assetManager, GLuint outputTexture) -> void;
 
     auto SetSize(int32_t width, int32_t height) -> void;
+
+    auto SetBackgroundTexture(GLuint backgroundTexture) -> void;
 
     auto ProcessVideoFrame(int width, int height, GLuint vertexBuffer, GLuint textureId) -> void;
 

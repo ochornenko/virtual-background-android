@@ -134,8 +134,8 @@ CameraVirtualBackgroundProcessor::~CameraVirtualBackgroundProcessor() {
     }
 }
 
-auto CameraVirtualBackgroundProcessor::Initialize(AAssetManager *assetManager, GLuint outputTexture,
-                                                  GLuint backgroundTexture) -> void {
+auto CameraVirtualBackgroundProcessor::Initialize(AAssetManager *assetManager,
+                                                  GLuint outputTexture) -> void {
     AAsset *modelFile = AAssetManager_open(assetManager, "model/selfie_segmenter.tflite",
                                            AASSET_MODE_BUFFER);
     CHECK(modelFile);
@@ -162,7 +162,6 @@ auto CameraVirtualBackgroundProcessor::Initialize(AAssetManager *assetManager, G
     m_modelData.reserve(m_modelWidth * m_modelHeight * 3);
 
     m_outputTexture = outputTexture;
-    m_backgroundTexture = backgroundTexture;
 
     glGenTextures(1, &m_maskTexture);
 
@@ -227,6 +226,10 @@ auto CameraVirtualBackgroundProcessor::SetSize(int32_t width, int32_t height) ->
 
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_outputTexture, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+auto CameraVirtualBackgroundProcessor::SetBackgroundTexture(GLuint backgroundTexture) -> void {
+    m_backgroundTexture = backgroundTexture;
 }
 
 auto CameraVirtualBackgroundProcessor::Invoke() const -> void {

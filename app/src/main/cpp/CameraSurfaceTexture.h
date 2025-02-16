@@ -15,10 +15,11 @@ public:
 
     virtual ~CameraSurfaceTexture();
 
-    auto Initialize(AAssetManager *assetManager, GLuint inputTexture,
-                    GLuint outputTexture, GLuint backgroundTexture) -> void;
+    auto Initialize(AAssetManager *assetManager, GLuint inputTexture, GLuint outputTexture) -> void;
 
     auto SetSize(int32_t width, int32_t height) -> void;
+
+    auto SetBackgroundTexture(GLuint backgroundTexture) -> void;
 
     auto UpdateTexImage(float *transformMatrix, float *rotationMatrix) const -> void;
 

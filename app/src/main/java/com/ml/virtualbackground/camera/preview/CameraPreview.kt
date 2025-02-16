@@ -1,6 +1,7 @@
 package com.ml.virtualbackground.camera.preview
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.util.AttributeSet
 import android.util.Log
 import android.widget.FrameLayout
@@ -14,6 +15,7 @@ import com.ml.virtualbackground.camera.CameraSurfaceTextureListener
 import com.ml.virtualbackground.camera.DeviceOrientationListener
 import com.ml.virtualbackground.camera.type.CameraFacing
 import com.ml.virtualbackground.camera.type.CameraSize
+import com.ml.virtualbackground.camera.utils.Utils.Companion.resizeBitmapToFit
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -98,6 +100,10 @@ class CameraPreview @JvmOverloads constructor(
         cameraSurfaceView.release()
     }
 
+    fun updateBackgroundImage(bitmap: Bitmap) {
+        surfaceTexture?.updateBackgroundImage(resizeBitmapToFit(bitmap, VIDEO_WIDTH, VIDEO_HEIGHT))
+    }
+
     private fun start(facing: CameraFacing) {
         GlobalScope.launch(cameraDispatcher) {
             runBlocking {
@@ -108,7 +114,7 @@ class CameraPreview @JvmOverloads constructor(
         }
     }
 
-    fun resume() {
+    private fun resume() {
         GlobalScope.launch(cameraDispatcher) {
             lifecycleState = LifecycleState.RESUMED
             try {

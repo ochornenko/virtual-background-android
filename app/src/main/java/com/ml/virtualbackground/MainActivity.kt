@@ -6,13 +6,16 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.ml.virtualbackground.camera.utils.Utils.Companion.loadBitmap
 import com.ml.virtualbackground.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
-
     private lateinit var binding: ActivityMainBinding
 
     @SuppressLint("SourceLockedOrientationActivity")
@@ -23,6 +26,8 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        setup()
     }
 
     override fun onStart() {
@@ -92,6 +97,29 @@ class MainActivity : AppCompatActivity() {
             this, arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_CODE
         )
     }
+
+    private fun setup() {
+        binding.imageButton.setOnClickListener {
+            openMediaPicker()
+        }
+    }
+
+    private fun openMediaPicker() {
+        mediaPickerLauncher.launch(
+            PickVisualMediaRequest.Builder()
+                .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                .build()
+        )
+    }
+
+    private var mediaPickerLauncher: ActivityResultLauncher<PickVisualMediaRequest> =
+        registerForActivityResult(ActivityResultContracts.PickVisualMedia()) {
+            it?.let { uri ->
+                loadBitmap(applicationContext, uri)?.let { bitmap ->
+                    binding.camera.updateBackgroundImage(bitmap)
+                }
+            }
+        }
 
     companion object {
         private const val CAMERA_PERMISSION_CODE = 100

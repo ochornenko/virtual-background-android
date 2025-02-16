@@ -2,14 +2,17 @@ package com.ml.virtualbackground.camera.preview
 
 import android.content.Context
 import android.content.res.AssetManager
+import android.graphics.Bitmap
 import android.graphics.SurfaceTexture
+import android.opengl.GLES20
+import android.opengl.GLUtils
 import android.opengl.Matrix
 import com.ml.virtualbackground.camera.type.CameraSize
 
 class CameraSurfaceTexture(
     private val inputTexture: Int,
     val outputTexture: Int,
-    private val backgroundTexture: Int,
+    private val backgroundTexture: Int
 ) :
     SurfaceTexture(inputTexture) {
     private var surfaceTexture = create()
@@ -20,16 +23,17 @@ class CameraSurfaceTexture(
         }
 
     private var previewInvalidated = false
+    private var bitmapInvalidated = false
     private val transformMatrix: FloatArray = FloatArray(16)
     private val extraTransformMatrix: FloatArray = FloatArray(16)
+    private var backgroundBitmap: Bitmap? = null
 
     fun init(context: Context) {
         nativeInit(
             context.assets,
             surfaceTexture,
             inputTexture,
-            outputTexture,
-            backgroundTexture
+            outputTexture
         )
         Matrix.setIdentityM(extraTransformMatrix, 0)
     }
@@ -38,6 +42,13 @@ class CameraSurfaceTexture(
         if (previewInvalidated) {
             nativeSetSize(surfaceTexture, size.width, size.height)
             previewInvalidated = false
+        }
+        if (bitmapInvalidated) {
+            backgroundBitmap?.let {
+                updateTexture(it, backgroundTexture)
+                nativeSetBackgroundTexture(surfaceTexture, backgroundTexture)
+            }
+            bitmapInvalidated = false
         }
 
         super.updateTexImage()
@@ -54,17 +65,43 @@ class CameraSurfaceTexture(
         Matrix.rotateM(extraTransformMatrix, 0, degrees.toFloat(), 0f, 0f, 1f)
     }
 
+    fun updateBackgroundImage(bitmap: Bitmap) {
+        backgroundBitmap = bitmap
+        bitmapInvalidated = true
+    }
+
+    private fun updateTexture(bitmap: Bitmap, textureId: Int) {
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
+
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(
+            GLES20.GL_TEXTURE_2D,
+            GLES20.GL_TEXTURE_WRAP_S,
+            GLES20.GL_CLAMP_TO_EDGE
+        )
+        GLES20.glTexParameteri(
+            GLES20.GL_TEXTURE_2D,
+            GLES20.GL_TEXTURE_WRAP_T,
+            GLES20.GL_CLAMP_TO_EDGE
+        )
+
+        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
+    }
+
     private external fun create(): Long
 
     private external fun nativeInit(
         assetManager: AssetManager,
         surfaceTexture: Long,
         inputTexture: Int,
-        outputTexture: Int,
-        backgroundTexture: Int
+        outputTexture: Int
     )
 
     private external fun nativeSetSize(surfaceTexture: Long, width: Int, height: Int)
+
+    private external fun nativeSetBackgroundTexture(surfaceTexture: Long, backgroundTexture: Int)
 
     private external fun nativeUpdateTexImage(
         surfaceTexture: Long,

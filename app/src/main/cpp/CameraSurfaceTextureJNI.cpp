@@ -17,12 +17,11 @@ JNI_METHOD(jlong, create)(JNIEnv *env, jobject obj) {
 }
 
 JNI_METHOD(void, nativeInit)(JNIEnv *env, jobject obj, jobject _assetManager, jlong _surfaceView,
-                             jint inputTexture, jint outputTexture, jint backgroundTexture) {
+                             jint inputTexture, jint outputTexture) {
     if (_surfaceView == 0L) return;
 
     auto assetManager = AAssetManager_fromJava(env, _assetManager);
-    castToSurfaceTexture(_surfaceView)->Initialize(assetManager, inputTexture, outputTexture,
-                                                   backgroundTexture);
+    castToSurfaceTexture(_surfaceView)->Initialize(assetManager, inputTexture, outputTexture);
 }
 
 JNI_METHOD(void, nativeSetSize)(JNIEnv *env, jobject obj, jlong _surfaceView, jint width,
@@ -30,6 +29,13 @@ JNI_METHOD(void, nativeSetSize)(JNIEnv *env, jobject obj, jlong _surfaceView, ji
     if (_surfaceView == 0L) return;
 
     castToSurfaceTexture(_surfaceView)->SetSize(width, height);
+}
+
+JNI_METHOD(void, nativeSetBackgroundTexture)(JNIEnv *env, jobject obj, jlong _surfaceView,
+                                             jint backgroundTexture) {
+    if (_surfaceView == 0L) return;
+
+    castToSurfaceTexture(_surfaceView)->SetBackgroundTexture(backgroundTexture);
 }
 
 JNI_METHOD(void, nativeUpdateTexImage)(JNIEnv *env, jobject obj, jlong _surfaceView,

@@ -23,12 +23,12 @@ CameraSurfaceTexture::CameraSurfaceTexture()
 }
 
 CameraSurfaceTexture::~CameraSurfaceTexture() {
-    if (m_inputTexture !=0) {
+    if (m_inputTexture != 0) {
         glDeleteTextures(1, &m_inputTexture);
         m_inputTexture = 0;
     }
 
-    if (m_texture !=0) {
+    if (m_texture != 0) {
         glDeleteTextures(1, &m_texture);
         m_texture = 0;
     }
@@ -51,7 +51,7 @@ CameraSurfaceTexture::~CameraSurfaceTexture() {
 }
 
 auto CameraSurfaceTexture::Initialize(AAssetManager *assetManager, GLuint inputTexture,
-                                      GLuint outputTexture, GLuint backgroundTexture) -> void {
+                                      GLuint outputTexture) -> void {
     m_inputTexture = inputTexture;
 
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, inputTexture);
@@ -75,7 +75,7 @@ auto CameraSurfaceTexture::Initialize(AAssetManager *assetManager, GLuint inputT
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-    m_pProcessor->Initialize(assetManager, outputTexture, backgroundTexture);
+    m_pProcessor->Initialize(assetManager, outputTexture);
 }
 
 auto CameraSurfaceTexture::SetSize(int32_t width, int32_t height) -> void {
@@ -105,6 +105,10 @@ auto CameraSurfaceTexture::SetSize(int32_t width, int32_t height) -> void {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     m_pProcessor->SetSize(width, height);
+}
+
+auto CameraSurfaceTexture::SetBackgroundTexture(GLuint backgroundTexture) -> void {
+    m_pProcessor->SetBackgroundTexture(backgroundTexture);
 }
 
 auto

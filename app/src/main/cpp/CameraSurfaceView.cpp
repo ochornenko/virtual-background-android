@@ -64,6 +64,7 @@ auto CameraSurfaceView::OnDrawFrame() -> void {
 auto CameraSurfaceView::DrawTexture(GLuint texture, int32_t textureWidth,
                                     int32_t textureHeight) const -> void {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
 
     int viewportX = 0;
