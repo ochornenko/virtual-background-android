@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdlib>
 #include <GLES2/gl2.h>
 #include <android/asset_manager.h>
 #include <tensorflow/lite/interpreter.h>
@@ -13,11 +12,10 @@ public:
 
     auto Initialize(AAssetManager *assetManager, GLuint outputTexture) -> void;
 
-    auto SetSize(int32_t width, int32_t height) -> void;
+    auto SetParams(int32_t width, int32_t height, GLuint backgroundTexture,
+                   GLuint framebuffer) -> void;
 
-    auto SetBackgroundTexture(GLuint backgroundTexture) -> void;
-
-    auto ProcessVideoFrame(int width, int height, GLuint vertexBuffer, GLuint textureId) -> void;
+    auto Process(int width, int height, GLuint vertexBuffer) -> void;
 
 private:
     auto Invoke() const -> void;
@@ -29,7 +27,10 @@ private:
     auto Mix(int32_t width, int32_t height, GLuint vertexBuffer, GLuint textureId) const -> void;
 
     static auto UpdateTexture(const std::vector<GLubyte> &pixelData, int32_t width, int32_t height,
-                              GLuint textureId) -> void;
+                              GLuint texture) -> void;
+
+    static auto BindFramebuffer(GLuint framebuffer, GLuint texture,
+                                int32_t width, int32_t height) -> void;
 
     static auto VertexResizerShaderCode() -> const char *;
 
@@ -44,6 +45,7 @@ private:
     std::vector<GLubyte> m_imageData;
     std::vector<GLubyte> m_modelData;
 
+    GLuint m_texture;
     GLuint m_outputFramebuffer;
     GLuint m_outputTexture;
     GLuint m_backgroundTexture;

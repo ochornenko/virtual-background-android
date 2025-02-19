@@ -14,11 +14,8 @@ JNI_METHOD(jlong, create)(JNIEnv *env, jobject obj);
 JNI_METHOD(void, nativeInit)(JNIEnv *env, jobject obj, jobject _assetManager, jlong _surfaceView,
                              jint inputTexture, jint outputTexture);
 
-JNI_METHOD(void, nativeSetSize)(JNIEnv *env, jobject obj, jlong _surfaceView, jint width,
-                                jint height);
-
-JNI_METHOD(void, nativeSetBackgroundTexture)(JNIEnv *env, jobject obj, jlong _surfaceView,
-                                             jint backgroundTexture);
+JNI_METHOD(void, nativeSetParams)(JNIEnv *env, jobject obj, jlong _surfaceView, jint width,
+                                  jint height, jint backgroundTexture);
 
 JNI_METHOD(void, nativeUpdateTexImage)(JNIEnv *env, jobject obj, jlong _surfaceView,
                                        jfloatArray transformMatrix,

@@ -13,7 +13,6 @@ CameraSurfaceTexture::CameraSurfaceTexture()
           m_height(0),
           m_inputTexture(0),
           m_framebuffer(0),
-          m_texture(0),
           m_vertexBuffer(0),
           m_program(0),
           m_position(0),
@@ -26,11 +25,6 @@ CameraSurfaceTexture::~CameraSurfaceTexture() {
     if (m_inputTexture != 0) {
         glDeleteTextures(1, &m_inputTexture);
         m_inputTexture = 0;
-    }
-
-    if (m_texture != 0) {
-        glDeleteTextures(1, &m_texture);
-        m_texture = 0;
     }
 
     if (m_framebuffer != 0) {
@@ -64,6 +58,8 @@ auto CameraSurfaceTexture::Initialize(AAssetManager *assetManager, GLuint inputT
     glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
     glBufferData(GL_ARRAY_BUFFER, 24 * sizeof(GLfloat), VertexData(), GL_STATIC_DRAW);
 
+    glGenFramebuffers(1, &m_framebuffer);
+
     m_program = CreateProgram(VertexShaderCode(), FragmentShaderCode());
 
     glUseProgram(m_program);
@@ -78,41 +74,16 @@ auto CameraSurfaceTexture::Initialize(AAssetManager *assetManager, GLuint inputT
     m_pProcessor->Initialize(assetManager, outputTexture);
 }
 
-auto CameraSurfaceTexture::SetSize(int32_t width, int32_t height) -> void {
+auto CameraSurfaceTexture::SetParams(int32_t width, int32_t height,
+                                     GLuint backgroundTexture) -> void {
     m_width = width;
     m_height = height;
 
-    if (glIsFramebuffer(m_framebuffer)) {
-        glDeleteFramebuffers(1, &m_framebuffer);
-    }
-    glGenFramebuffers(1, &m_framebuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer);
-
-    if (glIsTexture(m_texture)) {
-        glDeleteTextures(1, &m_texture);
-    }
-    glGenTextures(1, &m_texture);
-    glBindTexture(GL_TEXTURE_2D, m_texture);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_texture, 0);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    m_pProcessor->SetSize(width, height);
+    m_pProcessor->SetParams(width, height, backgroundTexture, m_framebuffer);
 }
 
-auto CameraSurfaceTexture::SetBackgroundTexture(GLuint backgroundTexture) -> void {
-    m_pProcessor->SetBackgroundTexture(backgroundTexture);
-}
-
-auto
-CameraSurfaceTexture::UpdateTexImage(float *transformMatrix, float *rotationMatrix) const -> void {
+auto CameraSurfaceTexture::UpdateTexImage(float *transformMatrix,
+                                          float *rotationMatrix) const -> void {
     glViewport(0, 0, m_width, m_height);
 
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -133,7 +104,7 @@ CameraSurfaceTexture::UpdateTexImage(float *transformMatrix, float *rotationMatr
     glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
     glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_SHORT, VertexIndices());
 
-    m_pProcessor->ProcessVideoFrame(m_width, m_height, m_vertexBuffer, m_texture);
+    m_pProcessor->Process(m_width, m_height, m_vertexBuffer);
 }
 
 auto CameraSurfaceTexture::VertexShaderCode() -> const char * {

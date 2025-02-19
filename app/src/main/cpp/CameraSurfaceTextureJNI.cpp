@@ -24,18 +24,11 @@ JNI_METHOD(void, nativeInit)(JNIEnv *env, jobject obj, jobject _assetManager, jl
     castToSurfaceTexture(_surfaceView)->Initialize(assetManager, inputTexture, outputTexture);
 }
 
-JNI_METHOD(void, nativeSetSize)(JNIEnv *env, jobject obj, jlong _surfaceView, jint width,
-                                jint height) {
+JNI_METHOD(void, nativeSetParams)(JNIEnv *env, jobject obj, jlong _surfaceView, jint width,
+                                  jint height, jint backgroundTexture) {
     if (_surfaceView == 0L) return;
 
-    castToSurfaceTexture(_surfaceView)->SetSize(width, height);
-}
-
-JNI_METHOD(void, nativeSetBackgroundTexture)(JNIEnv *env, jobject obj, jlong _surfaceView,
-                                             jint backgroundTexture) {
-    if (_surfaceView == 0L) return;
-
-    castToSurfaceTexture(_surfaceView)->SetBackgroundTexture(backgroundTexture);
+    castToSurfaceTexture(_surfaceView)->SetParams(width, height, backgroundTexture);
 }
 
 JNI_METHOD(void, nativeUpdateTexImage)(JNIEnv *env, jobject obj, jlong _surfaceView,

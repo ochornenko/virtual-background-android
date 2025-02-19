@@ -17,9 +17,7 @@ public:
 
     auto Initialize(AAssetManager *assetManager, GLuint inputTexture, GLuint outputTexture) -> void;
 
-    auto SetSize(int32_t width, int32_t height) -> void;
-
-    auto SetBackgroundTexture(GLuint backgroundTexture) -> void;
+    auto SetParams(int32_t width, int32_t height, GLuint backgroundTexture) -> void;
 
     auto UpdateTexImage(float *transformMatrix, float *rotationMatrix) const -> void;
 
@@ -29,7 +27,6 @@ private:
     int32_t m_height;
     GLuint m_inputTexture;
     GLuint m_framebuffer;
-    GLuint m_texture;
     GLuint m_vertexBuffer;
     GLuint m_program;
     GLint m_position;

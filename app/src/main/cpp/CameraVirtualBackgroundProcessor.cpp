@@ -86,7 +86,8 @@ static std::tuple<int32_t, int32_t> ResizeImageToFit(int32_t originalWidth, int3
 }
 
 CameraVirtualBackgroundProcessor::CameraVirtualBackgroundProcessor()
-        : m_outputFramebuffer(0),
+        : m_texture(0),
+          m_outputFramebuffer(0),
           m_outputTexture(0),
           m_backgroundTexture(0),
           m_maskTexture(0),
@@ -105,6 +106,11 @@ CameraVirtualBackgroundProcessor::CameraVirtualBackgroundProcessor()
 }
 
 CameraVirtualBackgroundProcessor::~CameraVirtualBackgroundProcessor() {
+    if (m_texture != 0) {
+        glDeleteTextures(1, &m_texture);
+        m_texture = 0;
+    }
+
     if (m_backgroundTexture != 0) {
         glDeleteTextures(1, &m_backgroundTexture);
         m_backgroundTexture = 0;
@@ -163,6 +169,7 @@ auto CameraVirtualBackgroundProcessor::Initialize(AAssetManager *assetManager,
 
     m_outputTexture = outputTexture;
 
+    glGenTextures(1, &m_texture);
     glGenTextures(1, &m_maskTexture);
 
     m_resizeProgram = CreateProgram(VertexResizerShaderCode(), FragmentResizerShaderCode());
@@ -176,7 +183,18 @@ auto CameraVirtualBackgroundProcessor::Initialize(AAssetManager *assetManager,
     m_mixTexCoord = glGetAttribLocation(m_mixProgram, "aTexCoord");
 }
 
-auto CameraVirtualBackgroundProcessor::SetSize(int32_t width, int32_t height) -> void {
+auto CameraVirtualBackgroundProcessor::SetParams(int32_t width, int32_t height,
+                                                 GLuint backgroundTexture,
+                                                 GLuint framebuffer) -> void {
+    if (!glIsTexture(backgroundTexture)) {
+        BindFramebuffer(framebuffer, m_outputTexture, width, height);
+        return;
+    }
+
+    BindFramebuffer(framebuffer, m_texture, width, height);
+
+    m_backgroundTexture = backgroundTexture;
+
     auto [imageWidth, imageHeight] = ResizeImageToFit(width, height, m_modelWidth, m_modelHeight);
 
     m_imageWidth = imageWidth;
@@ -212,9 +230,6 @@ auto CameraVirtualBackgroundProcessor::SetSize(int32_t width, int32_t height) ->
     glGenFramebuffers(1, &m_outputFramebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, m_outputFramebuffer);
 
-    if (glIsTexture(m_outputTexture)) {
-        glDeleteTextures(1, &m_outputTexture);
-    }
     glBindTexture(GL_TEXTURE_2D, m_outputTexture);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
@@ -226,10 +241,6 @@ auto CameraVirtualBackgroundProcessor::SetSize(int32_t width, int32_t height) ->
 
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_outputTexture, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-auto CameraVirtualBackgroundProcessor::SetBackgroundTexture(GLuint backgroundTexture) -> void {
-    m_backgroundTexture = backgroundTexture;
 }
 
 auto CameraVirtualBackgroundProcessor::Invoke() const -> void {
@@ -250,9 +261,9 @@ auto CameraVirtualBackgroundProcessor::Invoke() const -> void {
 auto
 CameraVirtualBackgroundProcessor::UpdateTexture(const std::vector<GLubyte> &pixelData,
                                                 int32_t width,
-                                                int32_t height, GLuint textureId) -> void {
+                                                int32_t height, GLuint texture) -> void {
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, textureId);
+    glBindTexture(GL_TEXTURE_2D, texture);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -265,22 +276,39 @@ CameraVirtualBackgroundProcessor::UpdateTexture(const std::vector<GLubyte> &pixe
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-auto CameraVirtualBackgroundProcessor::ProcessVideoFrame(int32_t width,
-                                                         int32_t height,
-                                                         GLuint vertexBuffer,
-                                                         GLuint textureId) -> void {
-    Resize(vertexBuffer, textureId);
-    Process();
-    Mix(width, height, vertexBuffer, textureId);
+auto CameraVirtualBackgroundProcessor::BindFramebuffer(GLuint framebuffer, GLuint texture,
+                                                       int32_t width, int32_t height) -> void {
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-auto CameraVirtualBackgroundProcessor::Resize(GLuint vertexBuffer, GLuint textureId) const -> void {
+auto CameraVirtualBackgroundProcessor::Process(int32_t width, int32_t height,
+                                               GLuint vertexBuffer) -> void {
+    if (glIsTexture(m_backgroundTexture)) {
+        Resize(vertexBuffer, m_texture);
+        Process();
+        Mix(width, height, vertexBuffer, m_texture);
+    }
+}
+
+auto CameraVirtualBackgroundProcessor::Resize(GLuint vertexBuffer, GLuint texture) const -> void {
     glViewport(0, 0, m_imageWidth, m_imageHeight);
 
     glBindFramebuffer(GL_FRAMEBUFFER, m_resizeFramebuffer);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, textureId);
+    glBindTexture(GL_TEXTURE_2D, texture);
 
     glUseProgram(m_resizeProgram);
 

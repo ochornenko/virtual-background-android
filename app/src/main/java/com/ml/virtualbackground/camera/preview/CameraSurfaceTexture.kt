@@ -23,7 +23,6 @@ class CameraSurfaceTexture(
         }
 
     private var previewInvalidated = false
-    private var bitmapInvalidated = false
     private val transformMatrix: FloatArray = FloatArray(16)
     private val extraTransformMatrix: FloatArray = FloatArray(16)
     private var backgroundBitmap: Bitmap? = null
@@ -40,15 +39,12 @@ class CameraSurfaceTexture(
 
     override fun updateTexImage() {
         if (previewInvalidated) {
-            nativeSetSize(surfaceTexture, size.width, size.height)
-            previewInvalidated = false
-        }
-        if (bitmapInvalidated) {
-            backgroundBitmap?.let {
+            val texture = backgroundBitmap?.let {
                 updateTexture(it, backgroundTexture)
-                nativeSetBackgroundTexture(surfaceTexture, backgroundTexture)
-            }
-            bitmapInvalidated = false
+                backgroundTexture
+            } ?: 0
+            nativeSetParams(surfaceTexture, size.width, size.height, texture)
+            previewInvalidated = false
         }
 
         super.updateTexImage()
@@ -67,11 +63,11 @@ class CameraSurfaceTexture(
 
     fun updateBackgroundImage(bitmap: Bitmap) {
         backgroundBitmap = bitmap
-        bitmapInvalidated = true
+        previewInvalidated = true
     }
 
-    private fun updateTexture(bitmap: Bitmap, textureId: Int) {
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
+    private fun updateTexture(bitmap: Bitmap, texture: Int) {
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture)
 
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
@@ -99,9 +95,12 @@ class CameraSurfaceTexture(
         outputTexture: Int
     )
 
-    private external fun nativeSetSize(surfaceTexture: Long, width: Int, height: Int)
-
-    private external fun nativeSetBackgroundTexture(surfaceTexture: Long, backgroundTexture: Int)
+    private external fun nativeSetParams(
+        surfaceTexture: Long,
+        width: Int,
+        height: Int,
+        backgroundTexture: Int
+    )
 
     private external fun nativeUpdateTexImage(
         surfaceTexture: Long,
