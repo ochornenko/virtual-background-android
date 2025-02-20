@@ -111,19 +111,9 @@ CameraVirtualBackgroundProcessor::~CameraVirtualBackgroundProcessor() {
         m_texture = 0;
     }
 
-    if (m_backgroundTexture != 0) {
-        glDeleteTextures(1, &m_backgroundTexture);
-        m_backgroundTexture = 0;
-    }
-
     if (m_maskTexture != 0) {
         glDeleteTextures(1, &m_maskTexture);
         m_maskTexture = 0;
-    }
-
-    if (m_outputTexture != 0) {
-        glDeleteTextures(1, &m_outputTexture);
-        m_outputTexture = 0;
     }
 
     if (m_outputFramebuffer != 0) {

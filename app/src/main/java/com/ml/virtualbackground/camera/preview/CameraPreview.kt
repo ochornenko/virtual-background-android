@@ -39,7 +39,7 @@ class CameraPreview @JvmOverloads constructor(
 
     private var cameraState: CameraState = CameraState.CAMERA_CLOSED
 
-    private var orientationListener = DeviceOrientationListener(context)
+    private var orientationListener = DeviceOrientationListener(context.applicationContext)
 
     private var previewOrientation: Int = 0
     private var captureOrientation: Int = 0
@@ -50,21 +50,21 @@ class CameraPreview @JvmOverloads constructor(
     private var surfaceTexture: CameraSurfaceTexture? = null
     private var attributes: CameraAttributes? = null
 
-    private val cameraSurfaceView: CameraSurfaceView = CameraSurfaceView(context)
+    private val cameraSurfaceView: CameraSurfaceView = CameraSurfaceView(context.applicationContext)
 
     private val cameraDispatcher: CoroutineDispatcher = newSingleThreadContext("camera")
     private var cameraOpenContinuation: Continuation<Unit>? = null
     private var previewStartContinuation: Continuation<Unit>? = null
 
     private val cameraApi: CameraApi = CameraHandlerApi(
-        Camera2(this, context)
+        Camera2(this, context.applicationContext)
     )
 
     init {
         cameraSurfaceView.cameraSurfaceTextureListener = object : CameraSurfaceTextureListener {
             override fun onSurfaceReady(cameraSurfaceTexture: CameraSurfaceTexture) {
                 surfaceTexture = cameraSurfaceTexture
-                surfaceTexture?.init(context)
+                surfaceTexture?.init(context.applicationContext)
                 surfaceState = SurfaceState.SURFACE_AVAILABLE
                 if (lifecycleState == LifecycleState.STARTED || lifecycleState == LifecycleState.RESUMED) {
                     resume()

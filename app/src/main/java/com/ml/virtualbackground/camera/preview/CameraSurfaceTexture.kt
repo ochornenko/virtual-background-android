@@ -13,8 +13,8 @@ class CameraSurfaceTexture(
     private val inputTexture: Int,
     val outputTexture: Int,
     private val backgroundTexture: Int
-) :
-    SurfaceTexture(inputTexture) {
+) : SurfaceTexture(inputTexture) {
+
     private var surfaceTexture = create()
     var size: CameraSize = CameraSize(0, 0)
         set(size) {

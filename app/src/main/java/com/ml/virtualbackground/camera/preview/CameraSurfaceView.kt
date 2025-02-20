@@ -13,6 +13,7 @@ class CameraSurfaceView : GLSurfaceView, GLSurfaceView.Renderer {
 
     var cameraSurfaceTextureListener: CameraSurfaceTextureListener? = null
     private var cameraSurfaceTexture: CameraSurfaceTexture? = null
+    private val textures = IntArray(3)
 
     constructor(context: Context)
             : super(context)
@@ -62,10 +63,11 @@ class CameraSurfaceView : GLSurfaceView, GLSurfaceView.Renderer {
 
     fun release() {
         nativeRelease(surfaceView)
+
+        GLES20.glDeleteTextures(3, textures, 0)
     }
 
     private fun genTextures(textureCallback: (inputTexture: Int, outputTexture: Int, backgroundTexture: Int) -> Unit) {
-        val textures = IntArray(3)
         GLES20.glGenTextures(3, textures, 0)
         textureCallback(textures[0], textures[1], textures[2])
     }

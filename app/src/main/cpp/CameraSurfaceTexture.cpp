@@ -22,11 +22,6 @@ CameraSurfaceTexture::CameraSurfaceTexture()
 }
 
 CameraSurfaceTexture::~CameraSurfaceTexture() {
-    if (m_inputTexture != 0) {
-        glDeleteTextures(1, &m_inputTexture);
-        m_inputTexture = 0;
-    }
-
     if (m_framebuffer != 0) {
         glDeleteFramebuffers(1, &m_framebuffer);
         m_framebuffer = 0;
