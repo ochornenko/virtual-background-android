@@ -7,6 +7,8 @@ import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
+import android.hardware.camera2.CaptureRequest
+import android.util.Range
 import android.view.Surface
 import com.ml.virtualbackground.camera.ext.getCameraId
 import com.ml.virtualbackground.camera.ext.getCaptureSession
@@ -86,6 +88,11 @@ class Camera2(eventsDelegate: CameraEvents, context: Context) :
                         .createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
                     requestBuilder.addTarget(surface)
 
+                    requestBuilder.set(
+                        CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
+                        Range(FPS, FPS)
+                    )
+
                     it.setRepeatingRequest(
                         requestBuilder.build(), null, cameraHandler
                     )
@@ -124,5 +131,9 @@ class Camera2(eventsDelegate: CameraEvents, context: Context) :
         override val previewSizes: Array<CameraSize> = cameraCharacteristics.getPreviewSizes()
 
         override val photoSizes: Array<CameraSize> = cameraCharacteristics.getPhotoSizes()
+    }
+
+    companion object {
+        const val FPS = 30
     }
 }

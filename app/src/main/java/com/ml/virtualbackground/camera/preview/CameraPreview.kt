@@ -13,6 +13,7 @@ import com.ml.virtualbackground.camera.CameraHandlerApi
 import com.ml.virtualbackground.camera.CameraSizeCalculator
 import com.ml.virtualbackground.camera.CameraSurfaceTextureListener
 import com.ml.virtualbackground.camera.DeviceOrientationListener
+import com.ml.virtualbackground.camera.FpsListener
 import com.ml.virtualbackground.camera.type.CameraFacing
 import com.ml.virtualbackground.camera.type.CameraSize
 import com.ml.virtualbackground.camera.utils.Utils.Companion.resizeBitmapToFit
@@ -36,6 +37,7 @@ class CameraPreview @JvmOverloads constructor(
 
     var lifecycleState: LifecycleState = LifecycleState.STOPPED
     var surfaceState: SurfaceState = SurfaceState.SURFACE_WAITING
+    var listener: FpsListener? = null
 
     private var cameraState: CameraState = CameraState.CAMERA_CLOSED
 
@@ -69,6 +71,12 @@ class CameraPreview @JvmOverloads constructor(
                 if (lifecycleState == LifecycleState.STARTED || lifecycleState == LifecycleState.RESUMED) {
                     resume()
                 }
+            }
+        }
+
+        cameraSurfaceView.listener = object : FpsListener {
+            override fun onFpsUpdate(fps: Float) {
+                listener?.onFpsUpdate(fps)
             }
         }
 

@@ -5,15 +5,20 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.util.AttributeSet
 import com.ml.virtualbackground.camera.CameraSurfaceTextureListener
+import com.ml.virtualbackground.camera.FpsListener
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
 class CameraSurfaceView : GLSurfaceView, GLSurfaceView.Renderer {
     private var surfaceView = create()
 
+    var listener: FpsListener? = null
     var cameraSurfaceTextureListener: CameraSurfaceTextureListener? = null
+
     private var cameraSurfaceTexture: CameraSurfaceTexture? = null
     private val textures = IntArray(3)
+    private var frameCount = 0
+    private var startTime = System.nanoTime()
 
     constructor(context: Context)
             : super(context)
@@ -59,6 +64,8 @@ class CameraSurfaceView : GLSurfaceView, GLSurfaceView.Renderer {
                 cameraSurfaceTexture.size.height
             )
         }
+
+        calculateFps()
     }
 
     fun release() {
@@ -70,6 +77,23 @@ class CameraSurfaceView : GLSurfaceView, GLSurfaceView.Renderer {
     private fun genTextures(textureCallback: (inputTexture: Int, outputTexture: Int, backgroundTexture: Int) -> Unit) {
         GLES20.glGenTextures(3, textures, 0)
         textureCallback(textures[0], textures[1], textures[2])
+    }
+
+    private fun calculateFps() {
+        frameCount++
+
+        val currentTime = System.nanoTime()
+        val elapsedTime = (currentTime - startTime) * 1e-9 // Convert to seconds
+
+        if (elapsedTime >= 1.0) { // Update FPS every second
+            val fps = frameCount / elapsedTime.toFloat()
+
+            listener?.onFpsUpdate(fps)
+
+            // Reset for next interval
+            frameCount = 0
+            startTime = System.nanoTime()
+        }
     }
 
     private external fun create(): Long

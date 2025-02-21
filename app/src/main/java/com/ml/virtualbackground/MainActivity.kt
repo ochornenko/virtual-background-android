@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.ml.virtualbackground.camera.FpsListener
 import com.ml.virtualbackground.camera.utils.Utils.Companion.loadBitmap
 import com.ml.virtualbackground.databinding.ActivityMainBinding
 
@@ -101,6 +102,14 @@ class MainActivity : AppCompatActivity() {
     private fun setup() {
         binding.imageButton.setOnClickListener {
             openMediaPicker()
+        }
+
+        binding.camera.listener = object : FpsListener {
+            override fun onFpsUpdate(fps: Float) {
+                runOnUiThread {
+                    binding.fps.text = getString(R.string.fps).format(fps)
+                }
+            }
         }
     }
 
