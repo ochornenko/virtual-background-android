@@ -20,7 +20,7 @@ import com.ml.virtualbackground.camera.ext.whenDeviceAvailable
 import com.ml.virtualbackground.camera.type.CameraFacing
 import com.ml.virtualbackground.camera.type.CameraSize
 
-class Camera2(eventsDelegate: CameraEvents, context: Context) :
+class Camera2(context: Context, eventsDelegate: CameraEvents) :
     CameraApi, CameraEvents by eventsDelegate {
 
     override val cameraHandler: CameraHandler = CameraHandler.get()

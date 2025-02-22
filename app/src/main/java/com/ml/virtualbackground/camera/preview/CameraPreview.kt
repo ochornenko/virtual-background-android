@@ -5,11 +5,9 @@ import android.graphics.Bitmap
 import android.util.AttributeSet
 import android.util.Log
 import android.widget.FrameLayout
-import com.ml.virtualbackground.camera.Camera2
-import com.ml.virtualbackground.camera.CameraApi
 import com.ml.virtualbackground.camera.CameraAttributes
+import com.ml.virtualbackground.camera.CameraController
 import com.ml.virtualbackground.camera.CameraEvents
-import com.ml.virtualbackground.camera.CameraHandlerApi
 import com.ml.virtualbackground.camera.CameraSizeCalculator
 import com.ml.virtualbackground.camera.CameraSurfaceTextureListener
 import com.ml.virtualbackground.camera.DeviceOrientationListener
@@ -17,7 +15,6 @@ import com.ml.virtualbackground.camera.FpsListener
 import com.ml.virtualbackground.camera.type.CameraFacing
 import com.ml.virtualbackground.camera.type.CameraSize
 import com.ml.virtualbackground.camera.utils.Utils.Companion.resizeBitmapToFit
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -51,13 +48,11 @@ class CameraPreview @JvmOverloads constructor(
 
     private val cameraSurfaceView: CameraSurfaceView = CameraSurfaceView(context.applicationContext)
 
-    private val cameraDispatcher: CoroutineDispatcher = newSingleThreadContext("camera")
     private var cameraOpenContinuation: Continuation<Unit>? = null
     private var previewStartContinuation: Continuation<Unit>? = null
 
-    private val cameraApi: CameraApi = CameraHandlerApi(
-        Camera2(this, context.applicationContext)
-    )
+    private val cameraDispatcher = newSingleThreadContext("camera")
+    private val cameraController = CameraController.create(context.applicationContext, this)
 
     init {
         cameraSurfaceView.cameraSurfaceTextureListener = object : CameraSurfaceTextureListener {
@@ -160,7 +155,7 @@ class CameraPreview @JvmOverloads constructor(
 
     private suspend fun openCamera(): Unit = suspendCoroutine {
         cameraOpenContinuation = it
-        cameraApi.open(cameraFacing)
+        cameraController.open(cameraFacing)
     }
 
     private suspend fun startPreview(): Unit = suspendCoroutine {
@@ -199,7 +194,7 @@ class CameraPreview @JvmOverloads constructor(
                 else -> CameraSize(previewSize.height, previewSize.width)
             }
 
-            cameraApi.startPreview(surfaceTexture)
+            cameraController.startPreview(surfaceTexture)
         } else {
             it.resumeWithException(IllegalStateException())
             previewStartContinuation = null
@@ -207,11 +202,11 @@ class CameraPreview @JvmOverloads constructor(
     }
 
     private fun stopPreview() {
-        cameraApi.stopPreview()
+        cameraController.stopPreview()
     }
 
     private fun closeCamera() {
-        cameraApi.close()
+        cameraController.close()
     }
 
     companion object {
