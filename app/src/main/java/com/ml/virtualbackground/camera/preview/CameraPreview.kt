@@ -36,10 +36,7 @@ class CameraPreview @JvmOverloads constructor(
 ) : FrameLayout(context, attrs, defStyleAttr), CameraEvents {
 
     var lifecycleState: LifecycleState = LifecycleState.STOPPED
-    var surfaceState: SurfaceState = SurfaceState.SURFACE_WAITING
     var listener: FpsListener? = null
-
-    private var cameraState: CameraState = CameraState.CAMERA_CLOSED
 
     private var orientationListener = DeviceOrientationListener(context.applicationContext)
 
@@ -67,7 +64,7 @@ class CameraPreview @JvmOverloads constructor(
             override fun onSurfaceReady(cameraSurfaceTexture: CameraSurfaceTexture) {
                 surfaceTexture = cameraSurfaceTexture
                 surfaceTexture?.init(context.applicationContext)
-                surfaceState = SurfaceState.SURFACE_AVAILABLE
+
                 if (lifecycleState == LifecycleState.STARTED || lifecycleState == LifecycleState.RESUMED) {
                     resume()
                 }
@@ -144,24 +141,14 @@ class CameraPreview @JvmOverloads constructor(
     }
 
     override fun onCameraOpened(cameraAttributes: CameraAttributes) {
-        cameraState = CameraState.CAMERA_OPENED
         attributes = cameraAttributes
         cameraOpenContinuation?.resume(Unit)
         cameraOpenContinuation = null
     }
 
-    override fun onCameraClosed() {
-        cameraState = CameraState.CAMERA_CLOSED
-    }
-
     override fun onPreviewStarted() {
-        cameraState = CameraState.PREVIEW_STARTED
         previewStartContinuation?.resume(Unit)
         previewStartContinuation = null
-    }
-
-    override fun onPreviewStopped() {
-        cameraState = CameraState.PREVIEW_STOPPED
     }
 
     enum class LifecycleState {
@@ -171,25 +158,8 @@ class CameraPreview @JvmOverloads constructor(
         STOPPED;
     }
 
-    enum class SurfaceState {
-        SURFACE_AVAILABLE,
-        SURFACE_WAITING;
-    }
-
-    enum class CameraState {
-        CAMERA_OPENING,
-        CAMERA_OPENED,
-        PREVIEW_STARTING,
-        PREVIEW_STARTED,
-        PREVIEW_STOPPING,
-        PREVIEW_STOPPED,
-        CAMERA_CLOSING,
-        CAMERA_CLOSED;
-    }
-
     private suspend fun openCamera(): Unit = suspendCoroutine {
         cameraOpenContinuation = it
-        cameraState = CameraState.CAMERA_OPENING
         cameraApi.open(cameraFacing)
     }
 
@@ -200,8 +170,6 @@ class CameraPreview @JvmOverloads constructor(
         val surfaceTexture = surfaceTexture
         val attributes = attributes
         if (surfaceTexture != null && attributes != null) {
-            cameraState = CameraState.PREVIEW_STARTING
-
             previewOrientation = when (cameraFacing) {
                 CameraFacing.BACK -> (attributes.sensorOrientation - displayOrientation + 360) % 360
                 CameraFacing.FRONT -> {
@@ -239,17 +207,15 @@ class CameraPreview @JvmOverloads constructor(
     }
 
     private fun stopPreview() {
-        cameraState = CameraState.PREVIEW_STOPPING
         cameraApi.stopPreview()
     }
 
     private fun closeCamera() {
-        cameraState = CameraState.CAMERA_CLOSING
         cameraApi.close()
     }
 
     companion object {
-        private val TAG: String = Camera2::class.java.simpleName
+        private val TAG: String = CameraPreview::class.java.simpleName
 
         const val VIDEO_WIDTH = 720
         const val VIDEO_HEIGHT = 1280

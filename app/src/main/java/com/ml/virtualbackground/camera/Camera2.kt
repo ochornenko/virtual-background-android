@@ -8,6 +8,7 @@ import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CaptureRequest
+import android.util.Log
 import android.util.Range
 import android.view.Surface
 import com.ml.virtualbackground.camera.ext.getCameraId
@@ -52,7 +53,6 @@ class Camera2(eventsDelegate: CameraEvents, context: Context) :
                     cameraDevice.close()
                     this@Camera2.cameraDevice = null
                     this@Camera2.captureSession = null
-                    onCameraClosed()
                 }
 
                 override fun onError(cameraDevice: CameraDevice, error: Int) {
@@ -72,7 +72,6 @@ class Camera2(eventsDelegate: CameraEvents, context: Context) :
         captureSession = null
         cameraAttributes = null
         previewStarted = false
-        onCameraClosed()
     }
 
     @Synchronized
@@ -111,9 +110,8 @@ class Camera2(eventsDelegate: CameraEvents, context: Context) :
                 captureSession.stopRepeating()
                 captureSession.abortCaptures()
                 captureSession.close()
-            } catch (_: Exception) {
-            } finally {
-                onPreviewStopped()
+            } catch (e: Exception) {
+                Log.e(TAG, e.toString())
             }
         }
         previewStarted = false
@@ -134,6 +132,7 @@ class Camera2(eventsDelegate: CameraEvents, context: Context) :
     }
 
     companion object {
-        const val FPS = 30
+        private val TAG: String = Camera2::class.java.simpleName
+        private const val FPS = 30
     }
 }
