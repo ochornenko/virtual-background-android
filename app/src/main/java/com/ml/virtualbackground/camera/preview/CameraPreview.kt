@@ -14,7 +14,7 @@ import com.ml.virtualbackground.camera.DeviceOrientationListener
 import com.ml.virtualbackground.camera.FpsListener
 import com.ml.virtualbackground.camera.type.CameraFacing
 import com.ml.virtualbackground.camera.type.CameraSize
-import com.ml.virtualbackground.camera.utils.Utils.Companion.resizeBitmapToFit
+import com.ml.virtualbackground.camera.utils.Utils.Companion.resizeBitmapToFill
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -101,7 +101,7 @@ class CameraPreview @JvmOverloads constructor(
     }
 
     fun updateBackgroundImage(bitmap: Bitmap) {
-        surfaceTexture?.updateBackgroundImage(resizeBitmapToFit(bitmap, VIDEO_WIDTH, VIDEO_HEIGHT))
+        surfaceTexture?.updateBackgroundImage(resizeBitmapToFill(bitmap, VIDEO_WIDTH, VIDEO_HEIGHT))
     }
 
     private fun start(facing: CameraFacing) {
