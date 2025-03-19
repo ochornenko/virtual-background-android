@@ -29,7 +29,6 @@ import android.util.Range
 import android.view.Surface
 import com.ml.virtualbackground.camera.ext.getCameraId
 import com.ml.virtualbackground.camera.ext.getCaptureSession
-import com.ml.virtualbackground.camera.ext.getPhotoSizes
 import com.ml.virtualbackground.camera.ext.getPreviewSizes
 import com.ml.virtualbackground.camera.ext.getSensorOrientation
 import com.ml.virtualbackground.camera.ext.whenDeviceAvailable
@@ -59,7 +58,7 @@ class Camera2(context: Context, eventsDelegate: CameraEvents) :
         cameraManager.whenDeviceAvailable(cameraId, cameraHandler) {
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(cameraDevice: CameraDevice) {
-                    val cameraAttributes = Attributes(cameraCharacteristics, facing)
+                    val cameraAttributes = Attributes(cameraCharacteristics)
                     this@Camera2.cameraDevice = cameraDevice
                     this@Camera2.cameraAttributes = cameraAttributes
                     onCameraOpened(cameraAttributes)
@@ -134,17 +133,11 @@ class Camera2(context: Context, eventsDelegate: CameraEvents) :
     }
 
     private class Attributes(
-        cameraCharacteristics: CameraCharacteristics,
-        cameraFacing: CameraFacing
+        cameraCharacteristics: CameraCharacteristics
     ) : CameraAttributes {
-
-        override val facing: CameraFacing = cameraFacing
-
         override val sensorOrientation: Int = cameraCharacteristics.getSensorOrientation()
 
         override val previewSizes: Array<CameraSize> = cameraCharacteristics.getPreviewSizes()
-
-        override val photoSizes: Array<CameraSize> = cameraCharacteristics.getPhotoSizes()
     }
 
     companion object {
