@@ -18,9 +18,11 @@ package com.ml.virtualbackground.camera.utils
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Bitmap.createBitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.net.Uri
+import androidx.core.graphics.scale
 
 class Utils {
     companion object {
@@ -32,12 +34,12 @@ class Utils {
             val newWidth = (inputBitmap.width * scaleFactor).toInt()
             val newHeight = (inputBitmap.height * scaleFactor).toInt()
 
-            val scaledBitmap = Bitmap.createScaledBitmap(inputBitmap, newWidth, newHeight, true)
+            val scaledBitmap = inputBitmap.scale(newWidth, newHeight)
 
             val xOffset = (newWidth - targetWidth) / 2
             val yOffset = (newHeight - targetHeight) / 2
 
-            return Bitmap.createBitmap(scaledBitmap, xOffset, yOffset, targetWidth, targetHeight)
+            return createBitmap(scaledBitmap, xOffset, yOffset, targetWidth, targetHeight)
         }
 
         fun loadBitmap(context: Context, uri: Uri): Bitmap? {
@@ -48,15 +50,15 @@ class Utils {
 
         private fun rotateIfNeeded(bitmap: Bitmap): Bitmap {
             return if (bitmap.width > bitmap.height) {
-                rotateBitmap(bitmap, 90f) // Assuming landscape needs rotation
+                rotateBitmap(bitmap) // Assuming landscape needs rotation
             } else {
                 bitmap
             }
         }
 
-        private fun rotateBitmap(bitmap: Bitmap, degrees: Float) = Matrix().run {
+        private fun rotateBitmap(bitmap: Bitmap, degrees: Float = 90f) = Matrix().run {
             postRotate(degrees)
-            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, this, true)
+            createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, this, true)
         }
     }
 }
