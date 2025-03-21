@@ -28,12 +28,23 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.ml.virtualbackground.camera.CameraAttributes
+import com.ml.virtualbackground.camera.CameraController
+import com.ml.virtualbackground.camera.CameraController.Companion.VIDEO_HEIGHT
+import com.ml.virtualbackground.camera.CameraController.Companion.VIDEO_WIDTH
+import com.ml.virtualbackground.camera.CameraEvents
+import com.ml.virtualbackground.camera.CameraSurfaceTextureListener
 import com.ml.virtualbackground.camera.FpsListener
+import com.ml.virtualbackground.camera.preview.CameraSurfaceTexture
 import com.ml.virtualbackground.camera.utils.Utils.Companion.loadBitmap
+import com.ml.virtualbackground.camera.utils.Utils.Companion.resizeBitmapToFill
 import com.ml.virtualbackground.databinding.ActivityMainBinding
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), CameraEvents {
     private lateinit var binding: ActivityMainBinding
+    private lateinit var cameraController: CameraController
+
+    private var surfaceTexture: CameraSurfaceTexture? = null
 
     @SuppressLint("SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,7 +61,7 @@ class MainActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         if (hasCameraPermission()) {
-            binding.camera.onStart()
+            cameraController.openCamera()
         } else {
             requestCameraPermission()
         }
@@ -59,29 +70,38 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (hasCameraPermission()) {
-            binding.camera.onResume()
+            cameraController.resumePreview(surfaceTexture)
         }
     }
 
     override fun onPause() {
         if (hasCameraPermission()) {
-            binding.camera.onPause()
+            cameraController.stopPreview()
         }
         super.onPause()
     }
 
     override fun onStop() {
         if (hasCameraPermission()) {
-            binding.camera.onStop()
+            cameraController.close()
         }
         super.onStop()
     }
 
     override fun onDestroy() {
         if (hasCameraPermission()) {
-            binding.camera.onDestroy()
+            surfaceTexture?.release()
+            binding.cameraPreview.release()
         }
         super.onDestroy()
+    }
+
+    override fun onCameraOpened(cameraAttributes: CameraAttributes) {
+        cameraController.onCameraOpened(cameraAttributes)
+    }
+
+    override fun onPreviewStarted() {
+        cameraController.onPreviewStarted()
     }
 
     override fun onRequestPermissionsResult(
@@ -92,7 +112,7 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == CAMERA_PERMISSION_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                binding.camera.onStart()
+                cameraController.openCamera()
             } else {
                 Toast.makeText(
                     this,
@@ -116,11 +136,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setup() {
+        cameraController = CameraController.create(applicationContext, this)
+
         binding.imageButton.setOnClickListener {
             openMediaPicker()
         }
 
-        binding.camera.listener = object : FpsListener {
+        binding.cameraPreview.cameraSurfaceTextureListener = object : CameraSurfaceTextureListener {
+            override fun onSurfaceReady(cameraSurfaceTexture: CameraSurfaceTexture) {
+                surfaceTexture = cameraSurfaceTexture
+                cameraController.resumePreview(surfaceTexture)
+            }
+        }
+
+        binding.cameraPreview.listener = object : FpsListener {
             override fun onFpsUpdate(fps: Float) {
                 runOnUiThread {
                     binding.fps.text = getString(R.string.fps).format(fps)
@@ -141,7 +170,13 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.PickVisualMedia()) {
             it?.let { uri ->
                 loadBitmap(applicationContext, uri)?.let { bitmap ->
-                    binding.camera.updateBackgroundImage(bitmap)
+                    surfaceTexture?.updateBackgroundImage(
+                        resizeBitmapToFill(
+                            bitmap,
+                            VIDEO_WIDTH,
+                            VIDEO_HEIGHT
+                        )
+                    )
                 }
             }
         }

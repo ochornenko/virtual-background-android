@@ -4,8 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <com.ml.virtualbackground.camera.preview.CameraPreview
-        android:id="@+id/camera"
+    <com.ml.virtualbackground.camera.preview.CameraSurfaceView
+        android:id="@+id/camera_preview"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:adjustViewBounds="true" />

@@ -56,6 +56,7 @@ class CameraSurfaceView : GLSurfaceView, GLSurfaceView.Renderer {
                 backgroundTexture
             ).apply {
                 setOnFrameAvailableListener { requestRender() }
+                init(context.applicationContext)
                 cameraSurfaceTextureListener?.onSurfaceReady(this)
             }
         }

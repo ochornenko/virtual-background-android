@@ -51,7 +51,6 @@ class Camera2(context: Context, eventsDelegate: CameraEvents) :
     private var previewStarted = false
 
     @SuppressLint("MissingPermission")
-    @Synchronized
     override fun open(facing: CameraFacing) {
         val cameraId = cameraManager.getCameraId(facing) ?: throw RuntimeException()
         val cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraId)
@@ -79,7 +78,6 @@ class Camera2(context: Context, eventsDelegate: CameraEvents) :
         }
     }
 
-    @Synchronized
     override fun close() {
         cameraDevice?.close()
         cameraDevice = null
@@ -89,7 +87,6 @@ class Camera2(context: Context, eventsDelegate: CameraEvents) :
         previewStarted = false
     }
 
-    @Synchronized
     override fun startPreview(surfaceTexture: SurfaceTexture) {
         val cameraDevice = cameraDevice
         if (cameraDevice != null) {
@@ -116,7 +113,6 @@ class Camera2(context: Context, eventsDelegate: CameraEvents) :
         }
     }
 
-    @Synchronized
     override fun stopPreview() {
         val captureSession = captureSession
         this.captureSession = null
