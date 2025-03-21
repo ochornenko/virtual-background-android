@@ -27,6 +27,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.runBlocking
+import java.lang.ref.WeakReference
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -35,8 +36,8 @@ import kotlin.coroutines.suspendCoroutine
 @OptIn(DelicateCoroutinesApi::class)
 class CameraController private constructor(
     context: Context,
-    private val delegate: CameraApi
-) : CameraApi by delegate {
+    private val camera: CameraApi
+) : CameraEvents, CameraApi by camera {
 
     enum class LifecycleState {
         STARTED,
@@ -61,6 +62,10 @@ class CameraController private constructor(
     private var attributes: CameraAttributes? = null
     private var cameraOpenContinuation: Continuation<Unit>? = null
     private var previewStartContinuation: Continuation<Unit>? = null
+
+    init {
+        camera.cameraEvents = WeakReference(this)
+    }
 
     override fun onCameraOpened(cameraAttributes: CameraAttributes) {
         attributes = cameraAttributes
@@ -142,37 +147,35 @@ class CameraController private constructor(
     override fun open(facing: CameraFacing) {
         lifecycleState = LifecycleState.STARTED
 
-        cameraHandler.run { delegate.open(facing) }
+        cameraHandler.run { camera.open(facing) }
     }
 
     override fun close() {
         lifecycleState = LifecycleState.STOPPED
 
-        cameraHandler.run { delegate.close() }
+        cameraHandler.run { camera.close() }
     }
 
     override fun startPreview(surfaceTexture: SurfaceTexture) {
         if (lifecycleState == LifecycleState.STARTED) {
             lifecycleState = LifecycleState.RESUMED
 
-            cameraHandler.run { delegate.startPreview(surfaceTexture) }
+            cameraHandler.run { camera.startPreview(surfaceTexture) }
         }
     }
 
     override fun stopPreview() {
         lifecycleState = LifecycleState.PAUSED
 
-        cameraHandler.run { delegate.stopPreview() }
+        cameraHandler.run { camera.stopPreview() }
     }
 
     companion object {
+        private val TAG: String = CameraController::class.java.simpleName
+
         const val VIDEO_WIDTH = 720
         const val VIDEO_HEIGHT = 1280
 
-        private val TAG: String = CameraController::class.java.simpleName
-
-        fun create(context: Context, eventsDelegate: CameraEvents): CameraController {
-            return CameraController(context, Camera2(context, eventsDelegate))
-        }
+        fun create(context: Context) = CameraController(context, Camera2(context))
     }
 }

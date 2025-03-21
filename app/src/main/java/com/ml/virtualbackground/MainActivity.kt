@@ -28,11 +28,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.ml.virtualbackground.camera.CameraAttributes
 import com.ml.virtualbackground.camera.CameraController
 import com.ml.virtualbackground.camera.CameraController.Companion.VIDEO_HEIGHT
 import com.ml.virtualbackground.camera.CameraController.Companion.VIDEO_WIDTH
-import com.ml.virtualbackground.camera.CameraEvents
 import com.ml.virtualbackground.camera.CameraSurfaceTextureListener
 import com.ml.virtualbackground.camera.FpsListener
 import com.ml.virtualbackground.camera.preview.CameraSurfaceTexture
@@ -40,11 +38,11 @@ import com.ml.virtualbackground.camera.utils.Utils.Companion.loadBitmap
 import com.ml.virtualbackground.camera.utils.Utils.Companion.resizeBitmapToFill
 import com.ml.virtualbackground.databinding.ActivityMainBinding
 
-class MainActivity : AppCompatActivity(), CameraEvents {
+class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var cameraController: CameraController
 
-    private var surfaceTexture: CameraSurfaceTexture? = null
+    private var cameraSurfaceTexture: CameraSurfaceTexture? = null
 
     @SuppressLint("SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,7 +68,7 @@ class MainActivity : AppCompatActivity(), CameraEvents {
     override fun onResume() {
         super.onResume()
         if (hasCameraPermission()) {
-            cameraController.resumePreview(surfaceTexture)
+            cameraController.resumePreview(cameraSurfaceTexture)
         }
     }
 
@@ -90,18 +88,10 @@ class MainActivity : AppCompatActivity(), CameraEvents {
 
     override fun onDestroy() {
         if (hasCameraPermission()) {
-            surfaceTexture?.release()
+            cameraSurfaceTexture?.release()
             binding.cameraPreview.release()
         }
         super.onDestroy()
-    }
-
-    override fun onCameraOpened(cameraAttributes: CameraAttributes) {
-        cameraController.onCameraOpened(cameraAttributes)
-    }
-
-    override fun onPreviewStarted() {
-        cameraController.onPreviewStarted()
     }
 
     override fun onRequestPermissionsResult(
@@ -136,15 +126,15 @@ class MainActivity : AppCompatActivity(), CameraEvents {
     }
 
     private fun setup() {
-        cameraController = CameraController.create(applicationContext, this)
+        cameraController = CameraController.create(applicationContext)
 
         binding.imageButton.setOnClickListener {
             openMediaPicker()
         }
 
-        binding.cameraPreview.cameraSurfaceTextureListener = object : CameraSurfaceTextureListener {
-            override fun onSurfaceReady(cameraSurfaceTexture: CameraSurfaceTexture) {
-                surfaceTexture = cameraSurfaceTexture
+        binding.cameraPreview.surfaceTextureListener = object : CameraSurfaceTextureListener {
+            override fun onSurfaceReady(surfaceTexture: CameraSurfaceTexture) {
+                cameraSurfaceTexture = surfaceTexture
                 cameraController.resumePreview(surfaceTexture)
             }
         }
@@ -170,12 +160,8 @@ class MainActivity : AppCompatActivity(), CameraEvents {
         registerForActivityResult(ActivityResultContracts.PickVisualMedia()) {
             it?.let { uri ->
                 loadBitmap(applicationContext, uri)?.let { bitmap ->
-                    surfaceTexture?.updateBackgroundImage(
-                        resizeBitmapToFill(
-                            bitmap,
-                            VIDEO_WIDTH,
-                            VIDEO_HEIGHT
-                        )
+                    cameraSurfaceTexture?.updateBackgroundImage(
+                        resizeBitmapToFill(bitmap, VIDEO_WIDTH, VIDEO_HEIGHT)
                     )
                 }
             }

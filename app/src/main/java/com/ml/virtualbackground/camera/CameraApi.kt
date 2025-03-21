@@ -16,6 +16,9 @@
 
 package com.ml.virtualbackground.camera
 
-interface CameraApi : CameraActions, CameraEvents {
+import java.lang.ref.WeakReference
+
+interface CameraApi : CameraActions {
     val cameraHandler: CameraHandler
+    var cameraEvents: WeakReference<CameraEvents>?
 }

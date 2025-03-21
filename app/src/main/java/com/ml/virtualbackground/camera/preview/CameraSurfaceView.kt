@@ -29,9 +29,9 @@ class CameraSurfaceView : GLSurfaceView, GLSurfaceView.Renderer {
     private var surfaceView = create()
 
     var listener: FpsListener? = null
-    var cameraSurfaceTextureListener: CameraSurfaceTextureListener? = null
+    var surfaceTextureListener: CameraSurfaceTextureListener? = null
 
-    private var cameraSurfaceTexture: CameraSurfaceTexture? = null
+    private var surfaceTexture: CameraSurfaceTexture? = null
     private val textures = IntArray(3)
     private var frameCount = 0
     private var startTime = System.nanoTime()
@@ -50,14 +50,14 @@ class CameraSurfaceView : GLSurfaceView, GLSurfaceView.Renderer {
 
     override fun onSurfaceCreated(gl: GL10, config: EGLConfig) {
         genTextures { inputTexture, outputTexture, backgroundTexture ->
-            cameraSurfaceTexture = CameraSurfaceTexture(
+            surfaceTexture = CameraSurfaceTexture(
                 inputTexture,
                 outputTexture,
                 backgroundTexture
             ).apply {
                 setOnFrameAvailableListener { requestRender() }
                 init(context.applicationContext)
-                cameraSurfaceTextureListener?.onSurfaceReady(this)
+                surfaceTextureListener?.onSurfaceReady(this)
             }
         }
 
@@ -69,17 +69,12 @@ class CameraSurfaceView : GLSurfaceView, GLSurfaceView.Renderer {
     }
 
     override fun onDrawFrame(gl: GL10) {
-        val cameraSurfaceTexture = cameraSurfaceTexture
-        if (cameraSurfaceTexture != null) {
+        surfaceTexture?.let {
             nativeOnDrawFrame(surfaceView)
 
-            cameraSurfaceTexture.updateTexImage()
-            nativeDrawTexture(
-                surfaceView,
-                cameraSurfaceTexture.outputTexture,
-                cameraSurfaceTexture.size.width,
-                cameraSurfaceTexture.size.height
-            )
+            it.updateTexImage()
+
+            nativeDrawTexture(surfaceView, it.outputTexture, it.size.width, it.size.height)
         }
 
         calculateFps()

@@ -34,11 +34,13 @@ import com.ml.virtualbackground.camera.ext.getSensorOrientation
 import com.ml.virtualbackground.camera.ext.whenDeviceAvailable
 import com.ml.virtualbackground.camera.type.CameraFacing
 import com.ml.virtualbackground.camera.type.CameraSize
+import java.lang.ref.WeakReference
 
-class Camera2(context: Context, eventsDelegate: CameraEvents) :
-    CameraApi, CameraEvents by eventsDelegate {
+class Camera2(context: Context) : CameraApi {
 
     override val cameraHandler: CameraHandler = CameraHandler.get()
+
+    override var cameraEvents: WeakReference<CameraEvents>? = null
 
     private val cameraManager: CameraManager =
         context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
@@ -60,7 +62,7 @@ class Camera2(context: Context, eventsDelegate: CameraEvents) :
                     val cameraAttributes = Attributes(cameraCharacteristics)
                     this@Camera2.cameraDevice = cameraDevice
                     this@Camera2.cameraAttributes = cameraAttributes
-                    onCameraOpened(cameraAttributes)
+                    cameraEvents?.get()?.onCameraOpened(cameraAttributes)
                 }
 
                 override fun onDisconnected(cameraDevice: CameraDevice) {
@@ -107,7 +109,7 @@ class Camera2(context: Context, eventsDelegate: CameraEvents) :
                     it.setRepeatingRequest(
                         requestBuilder.build(), null, cameraHandler
                     )
-                    onPreviewStarted()
+                    cameraEvents?.get()?.onPreviewStarted()
                 }
             }
         }
