@@ -17,7 +17,6 @@
 #pragma once
 
 #include <android/log.h>
-#include <cassert>
 
 #define DEBUG 1
 

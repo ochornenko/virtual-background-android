@@ -18,6 +18,8 @@
 #include "GLUtils.h"
 #include "Log.h"
 
+#include <GLES2/gl2ext.h>
+
 auto CameraSurfaceTexture::create() -> std::unique_ptr<CameraSurfaceTexture> {
     auto processor = std::make_unique<CameraSurfaceTexture>();
     return std::move(processor);

@@ -21,7 +21,6 @@ namespace {
     CameraSurfaceView *castToSurfaceView(jlong handle) {
         return reinterpret_cast<CameraSurfaceView *>(static_cast<uintptr_t>(handle));
     }
-
 }  // namespace
 
 JNI_METHOD(jlong, create)(JNIEnv *env, jobject obj) {
