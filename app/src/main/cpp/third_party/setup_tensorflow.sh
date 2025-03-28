@@ -22,12 +22,15 @@ clone_and_checkout() {
 }
 
 build_and_copy() {
-    platform=$1 # Platform (e.g., arm64, arm, x86_64, x86)
-    cpu=$2      # CPU (e.g., arm64-v8a, armeabi-v7a, x86_64, x86)
-    flags=$3    # Additional Bazel flags (e.g., xnn_enable flags)
+    platform=android_$1 # Platform (e.g., android_arm64, android_arm, android_x86_64, android_x86)
+    cpu=$2              # CPU (e.g., arm64-v8a, armeabi-v7a, x86_64, x86)
+    flags=$3            # Additional Bazel flags (e.g., xnn_enable flags)
 
     # Build with Bazel
-    bazel build -c opt --config=android_$platform --cpu=$cpu $flags //tensorflow/lite:tensorflowlite
+    bazel build -c opt --config=$platform --cpu=$cpu $flags //tensorflow/lite:tensorflowlite
+
+    # Remove library if exist
+    [ -f "./bazel-out/"${cpu}"-opt/bin/tensorflow/lite/libtensorflowlite.so" ] && rm -f ../../../libs/"${cpu}"/libtensorflowlite.so
 
     # Copy the generated library to the correct output directory
     mkdir -p ../../../libs/"${cpu}" && cp ./bazel-out/"${cpu}"-opt/bin/tensorflow/lite/libtensorflowlite.so ../../../libs/"${cpu}"/libtensorflowlite.so
@@ -37,11 +40,11 @@ clone_and_checkout "flatbuffers" "https://github.com/google/flatbuffers.git" "v2
 cd ..
 clone_and_checkout "tensorflow" "https://github.com/tensorflow/tensorflow.git" "v2.17.0"
 
-# Check if Bazel is installed
-if ! command -v bazel &> /dev/null; then
-    echo "Bazel is not installed. Please install Bazel and try again if you need to rebuild TensorFlow Lite libs."
-    exit 1
-fi
+ # Check if Bazel is installed
+ if ! command -v bazel >/dev/null 2>&1; then
+     echo "Bazel is not installed. Please install Bazel and try again if you need to rebuild TensorFlow Lite libs."
+     exit 1
+ fi
 
 build_and_copy "arm64" "arm64-v8a" "--define xnn_enable_arm_i8mm=false"
 build_and_copy "arm" "armeabi-v7a" "--define xnn_enable_arm_i8mm=false"
