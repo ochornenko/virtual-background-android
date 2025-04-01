@@ -182,7 +182,7 @@ Please note that the `setup_tensorflow.sh` script has been tested on Intel-based
 
 ## Demo
 
-
+https://github.com/user-attachments/assets/ecbd94b4-9d21-4977-86bf-6f692b8bc410
 
 ## Like This Project? Fuel It with a Coffee! ☕
 
