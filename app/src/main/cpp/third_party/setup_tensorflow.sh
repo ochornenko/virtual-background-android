@@ -46,7 +46,7 @@ clone_and_checkout "tensorflow" "https://github.com/tensorflow/tensorflow.git" "
      exit 1
  fi
 
-build_and_copy "arm64" "arm64-v8a" "--define xnn_enable_arm_i8mm=false"
+build_and_copy "arm64" "arm64-v8a" "--define xnn_enable_arm_i8mm=false --linkopt='-Wl,-z,max-page-size=16384' --linkopt='-Wl,-z,common-page-size=16384'"
 build_and_copy "arm" "armeabi-v7a" "--define xnn_enable_arm_i8mm=false"
-build_and_copy "x86_64" "x86_64" "--define=xnn_enable_avxvnni=false --define=xnn_enable_avxvnniint8=false --define=xnn_enable_avx512amx=false --define=xnn_enable_avx512fp16=false"
+build_and_copy "x86_64" "x86_64" "--define=xnn_enable_avxvnni=false --define=xnn_enable_avxvnniint8=false --define=xnn_enable_avx512amx=false --define=xnn_enable_avx512fp16=false --linkopt='-Wl,-z,max-page-size=16384' --linkopt='-Wl,-z,common-page-size=16384'"
 build_and_copy "x86" "x86" "--define=xnn_enable_avxvnni=false --define=xnn_enable_avxvnniint8=false --define=xnn_enable_avx512amx=false --define=xnn_enable_avx512fp16=false"
