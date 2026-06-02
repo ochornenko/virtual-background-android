@@ -174,11 +174,43 @@ Here’s how it works:
 
 ## Setup and Execution
 
-The project has a dependency on `TensorFlow` `C++` headers/libraries, which in turn require `FlatBuffers` `C++` header files. Since this project uses `C++` code, it requires the `Android` NDK (Native Development Kit) to be installed. The latest NDK version can be used. To set up the project, navigate to `virtual-background-android/app/src/main/cpp/third_party` and run the `setup_tensorflow.sh` bash script. This script clones specific versions of the `TensorFlow` and `FlatBuffers` repositories, builds the required `TensorFlow Lite` shared libraries, and copies them to the appropriate directories if the `Bazel` build system is installed. Otherwise, it will use the `prebuilt` libraries included in the project. After running the script, open the project in Android Studio, connect an `Android` device, and launch the application.
+The project has a dependency on `TensorFlow` `C++` headers/libraries, which in turn require `FlatBuffers` `C++` header files. Since this project uses `C++` code, it requires the `Android` NDK (Native Development Kit) to be installed in Android Studio for the app build itself. The latest NDK version can be used for the app.
 
-So the project already includes prebuilt `libtensorflowlite.so` shared libraries for various `CPU` architectures (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`). These libraries were built using the same `setup_tensorflow.sh` script. If you need to rebuild the libraries, the script will first check if `Bazel` is installed. If `Bazel` is available, the build process will start, and the final libraries will be copied to the appropriate folders. If `Bazel` is not installed, the script will print a message and exit. [Bazelisk](https://github.com/bazelbuild/bazelisk) is the recommended way to install `Bazel`, as it ensures compatibility with the required `Bazel` version. Additionally, `Bazel` requires the `Android` NDK to build `Android` shared libraries. The script uses NDK version `21.4.7075529` (so this version needs to be installed if you are already using a newer one), as newer versions may not be supported by `Bazel`.
+The required `TensorFlow` and `FlatBuffers` `C++` headers are obtained by running the `build_tensorflow_docker.sh` script described below — it clones the pinned versions of both repositories into `app/src/main/cpp/third_party/tensorflow` and `app/src/main/cpp/third_party/flatbuffers`, where the `CMake` build picks up the headers from. You only need to run the script once to populate the headers; rebuilding the `.so` libraries on top of the prebuilt ones is optional.
 
-Please note that the `setup_tensorflow.sh` script has been tested on Intel-based Mac system. It may require modifications to work on other platforms, such as ARM-based Macs or Linux/Windows systems.
+The repository already includes prebuilt `libtensorflowlite.so` shared libraries for all supported `CPU` architectures (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`), so after the headers are in place you can simply open the project in Android Studio, connect an `Android` device, and launch the application — no extra setup is required.
+
+### Rebuilding TensorFlow Lite (optional, Docker-based)
+
+If you need to rebuild the `TensorFlow Lite` shared libraries (for example, to upgrade `TensorFlow` or change build flags), use the Docker-based build pipeline located in `virtual-background-android/app/src/main/cpp/third_party`. This avoids having to install `Bazel`, the `Android` SDK command-line tools, and a specific `Android` NDK on your host machine — everything runs inside a reproducible Linux container.
+
+Prerequisites:
+
+- `Docker` installed and running (Docker Desktop on macOS/Windows, or `docker` engine on Linux).
+- A few GB of free disk space and RAM available to Docker (TensorFlow Lite is heavy to build).
+
+The pipeline consists of three files:
+
+- `tensorflow.Dockerfile` — defines an `Ubuntu 22.04` image with `OpenJDK 17`, `Bazel 6.5.0`, the `Android` SDK (API 34, build-tools 34.0.0), and `Android` NDK `21.4.7075529` preinstalled.
+- `build_tensorflow_inside_docker.sh` — runs inside the container; clones pinned versions of `TensorFlow` (`v2.17.0`) and `FlatBuffers` (`v24.3.25`), builds `//tensorflow/lite:tensorflowlite` with `Bazel` for the requested ABI(s), and copies the resulting `libtensorflowlite.so` to the mounted output directory.
+- `build_tensorflow_docker.sh` — host entrypoint; builds the Docker image (cached after the first run) and then runs the inner script in a container, mounting `third_party` as `/work` and `app/src/main/libs` as `/output`.
+
+To build all four ABIs:
+
+```sh
+cd virtual-background-android/app/src/main/cpp/third_party
+./build_tensorflow_docker.sh
+```
+
+To build a single ABI (`arm64-v8a`, `armeabi-v7a`, `x86_64`, or `x86`):
+
+```sh
+./build_tensorflow_docker.sh arm64-v8a
+```
+
+The freshly built libraries are written to `app/src/main/libs/<abi>/libtensorflowlite.so`, replacing the prebuilt ones. The cloned `tensorflow/` and `flatbuffers/` source trees are kept under `third_party/` between runs to speed up subsequent rebuilds.
+
+Because the build runs inside Linux containers, the same script works on Intel Macs, Apple Silicon Macs (via Docker's emulation/`linux/amd64` images), and Linux without modification. On Windows, run it from a `WSL2` shell with `Docker Desktop`'s WSL integration enabled — the script is a POSIX shell script and will not run directly from `PowerShell` or `cmd.exe`. `Git Bash` / `MSYS2` may also work but typically requires disabling path translation (e.g. `MSYS_NO_PATHCONV=1`) so that bind-mount paths like `/work` are not rewritten.
 
 ## Demo
 
