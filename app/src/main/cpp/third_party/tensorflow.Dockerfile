@@ -1,4 +1,5 @@
-FROM ubuntu:22.04
+ARG BUILD_PLATFORM=linux/amd64
+FROM --platform=${BUILD_PLATFORM} ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
@@ -28,8 +29,13 @@ RUN mkdir -p $ANDROID_SDK_ROOT/cmdline-tools && \
     yes | sdkmanager --licenses > /dev/null && \
     sdkmanager --install \
         "platform-tools" \
-        "platforms;android-34" \
-        "build-tools;34.0.0" \
-        "ndk;21.4.7075529" > /dev/null
+        "platforms;android-36" \
+        "build-tools;36.0.0" > /dev/null && \
+    curl -fsSL -o /tmp/ndk.zip \
+        "https://dl.google.com/android/repository/android-ndk-r21e-linux-x86_64.zip" && \
+    unzip -q /tmp/ndk.zip -d /tmp/ndk && \
+    mkdir -p $ANDROID_SDK_ROOT/ndk && \
+    mv /tmp/ndk/android-ndk-r21e $ANDROID_SDK_ROOT/ndk/21.4.7075529 && \
+    rm -rf /tmp/ndk.zip /tmp/ndk
 
 WORKDIR /work

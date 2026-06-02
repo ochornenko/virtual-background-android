@@ -23,7 +23,7 @@ INNER_SCRIPT="$SCRIPT_DIR/build_tensorflow_inside_docker.sh"
 
 # --- Build Docker image (cached after first run) -------------------------
 echo "==> Building Docker image: $IMAGE_TAG"
-docker build -t "$IMAGE_TAG" -f "$DOCKERFILE" "$SCRIPT_DIR"
+docker build --platform linux/amd64 -t "$IMAGE_TAG" -f "$DOCKERFILE" "$SCRIPT_DIR"
 
 # --- Run the build inside Docker -----------------------------------------
 echo "==> Ensuring build_tensorflow_inside_docker.sh is executable"
@@ -33,7 +33,7 @@ TARGET_ARCH="${1:-all}"
 mkdir -p "$LIBS_DIR/arm64-v8a" "$LIBS_DIR/armeabi-v7a" "$LIBS_DIR/x86_64" "$LIBS_DIR/x86"
 
 echo "==> Running build inside Docker (TARGET_ARCH=$TARGET_ARCH)"
-docker run --rm -it \
+docker run --rm -it --platform linux/amd64 \
     -v "$SCRIPT_DIR:/work" \
     -v "$LIBS_DIR:/output" \
     -e TF_VERSION="$TF_VERSION" \
