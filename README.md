@@ -5,7 +5,7 @@
 1. [Introduction](#introduction)
 2. [Class Diagram](#class-diagram)
 3. [Camera Capturing](#camera-capturing)
-4. [Camera Preview Rendering](#camera-capturing)
+4. [Camera Preview Rendering](#camera-preview-rendering)
 5. [Applying Virtual Background](#applying-virtual-background)
 6. [Setup and Execution](#setup-and-execution)
 7. [Demo](#demo)
@@ -59,6 +59,7 @@ classDiagram
     class CameraEvents {
         <<interface>>
         +onCameraOpened(cameraAttributes: CameraAttributes)
+        +onCameraError()
         +onPreviewStarted()
     }
 
@@ -85,7 +86,7 @@ classDiagram
         +onSurfaceCreated(gl: GL10, config: EGLConfig)
         +onSurfaceChanged(gl: GL10, width: Int, height: Int)
         +onDrawFrame(gl: GL10)
-        +release()
+        #onDetachedFromWindow()
         -genTextures(textureCallback: (inputTexture: Int, outputTexture: Int, backgroundTexture: Int) -> Unit)
         -calculateFps()
         -create(): Long
@@ -162,13 +163,13 @@ Here’s how it works:
 
 1. **Initialization**: The Initialize method sets up the `TensorFlow Lite` interpreter and `OpenGL ES` resources. It loads the segmentation model (`selfie_segmenter.tflite`) from the assets using the Android `AAssetManager`. The `TensorFlow Lite` interpreter is configured, and tensors are allocated for input and output. `OpenGL ES` resources, including textures for the input frame, mask, and background, are created. Shader programs for resizing and blending operations are compiled and linked, and attribute locations for vertex positions and texture coordinates are retrieved.
 
-2. **Resizing the Frame**: The `Resize` method resizes the input frame to match the dimensions (`256x256`) expected by the segmentation model. The input frame is rendered into a framebuffer using `OpenGL ES`, and the resized frame is read back into a `CPU` buffer using `glReadPixels`. The `AddPadding` utility function ensures the resized frame fits the model's input dimensions by adding padding if necessary.
+2. **Resizing the Frame**: The `Resize` method renders the input frame into a framebuffer scaled to fit the dimensions (`256x256`) expected by the segmentation model while keeping its aspect ratio. The resized frame is read back into a `CPU` buffer using `glReadPixels`, and the `AddPadding` utility function converts it to `RGB` and centers it in the model's input, padding the remaining area.
 
 3. **Loading the Model**: The `TensorFlow Lite` model is loaded during initialization. The model is configured to accept a resized input frame and output a segmentation mask. The mask is a probability map where each pixel represents the likelihood of belonging to the foreground (person). The model's input dimensions are stored for resizing operations, and the output tensor is used to generate the segmentation mask.
 
-4. **Generating the Segmentation Mask**: The Process method runs the `TensorFlow Lite` model on the resized input frame to generate the segmentation mask. The mask is processed to create a binary texture, where pixels with a probability above a threshold (e.g., 0.5) are marked as foreground. The `RemovePadding` utility function ensures the mask matches the original frame's aspect ratio, and the mask is uploaded to the `GPU` as a texture using `UpdateTexture`.
+4. **Generating the Segmentation Mask**: The Process method runs the `TensorFlow Lite` model on the resized input frame to generate the segmentation mask. The person probability of each pixel is stored as an 8-bit value, cropping the padding so the mask matches the original frame's aspect ratio, and the mask is uploaded to the `GPU` as a single-channel texture using `UpdateTexture`. Keeping the probability instead of a binary threshold lets the mixer soften the edges of the person.
 
-5. **Rendering the Frame**: The `Mix` method uses `OpenGL ES` shaders to blend the input frame, background texture, and mask texture. The vertex shader transforms vertex positions and passes texture coordinates to the fragment shader. The fragment shader samples the input frame, background texture, and mask texture, blending them based on the mask values. The blended frame is rendered into the output framebuffer, which is bound to the output texture.
+5. **Rendering the Frame**: The `Mix` method uses `OpenGL ES` shaders to blend the input frame, background texture, and mask texture. The vertex shader transforms vertex positions and passes texture coordinates to the fragment shader. The fragment shader samples the input frame, background texture, and mask texture, and blends them with a weight of `smoothstep(0.3, 0.7, mask)`, which gives a smooth transition around the person instead of a hard cutout. The blended frame is rendered into the output framebuffer, which is bound to the output texture.
 
 6. **Displaying the Frame**: The final blended frame is stored in the output texture, which can be displayed on the screen using the `CameraSurfaceView` class. The `CameraSurfaceView` class renders the output texture onto the screen, completing the virtual background application process.
 
