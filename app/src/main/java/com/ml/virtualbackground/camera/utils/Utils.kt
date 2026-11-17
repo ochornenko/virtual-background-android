@@ -19,9 +19,9 @@ package com.ml.virtualbackground.camera.utils
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Bitmap.createBitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
+import android.graphics.ImageDecoder
 import android.net.Uri
+import android.util.Log
 import androidx.core.graphics.scale
 
 class Utils {
@@ -42,23 +42,30 @@ class Utils {
             return createBitmap(scaledBitmap, xOffset, yOffset, targetWidth, targetHeight)
         }
 
-        fun loadBitmap(context: Context, uri: Uri): Bitmap? {
-            return context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                rotateIfNeeded(BitmapFactory.decodeStream(inputStream))
+        /**
+         * Decodes [uri] with its EXIF orientation applied, downsampled to the smallest
+         * power-of-two size that still covers [targetWidth] x [targetHeight].
+         */
+        fun loadBitmap(context: Context, uri: Uri, targetWidth: Int, targetHeight: Int): Bitmap? {
+            val source = ImageDecoder.createSource(context.contentResolver, uri)
+            return try {
+                ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+                    var sampleSize = 1
+                    while (info.size.width / (sampleSize * 2) >= targetWidth &&
+                        info.size.height / (sampleSize * 2) >= targetHeight
+                    ) {
+                        sampleSize *= 2
+                    }
+                    decoder.setTargetSampleSize(sampleSize)
+                    // GLUtils.texImage2D can't upload hardware bitmaps
+                    decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, e.toString())
+                null
             }
         }
 
-        private fun rotateIfNeeded(bitmap: Bitmap): Bitmap {
-            return if (bitmap.width > bitmap.height) {
-                rotateBitmap(bitmap) // Assuming landscape needs rotation
-            } else {
-                bitmap
-            }
-        }
-
-        private fun rotateBitmap(bitmap: Bitmap, degrees: Float = 90f) = Matrix().run {
-            postRotate(degrees)
-            createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, this, true)
-        }
+        private const val TAG = "Utils"
     }
 }

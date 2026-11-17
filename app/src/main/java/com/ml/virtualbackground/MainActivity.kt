@@ -37,6 +37,7 @@ import com.ml.virtualbackground.camera.preview.CameraSurfaceTexture
 import com.ml.virtualbackground.camera.utils.Utils.Companion.loadBitmap
 import com.ml.virtualbackground.camera.utils.Utils.Companion.resizeBitmapToFill
 import com.ml.virtualbackground.databinding.ActivityMainBinding
+import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -87,6 +88,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        imageLoader.shutdownNow()
         cameraSurfaceTexture?.release()
         cameraSurfaceTexture = null
         binding.cameraPreview.release()
@@ -158,13 +160,20 @@ class MainActivity : AppCompatActivity() {
     private var mediaPickerLauncher: ActivityResultLauncher<PickVisualMediaRequest> =
         registerForActivityResult(ActivityResultContracts.PickVisualMedia()) {
             it?.let { uri ->
-                loadBitmap(applicationContext, uri)?.let { bitmap ->
-                    cameraSurfaceTexture?.updateBackgroundImage(
-                        resizeBitmapToFill(bitmap, VIDEO_WIDTH, VIDEO_HEIGHT)
-                    )
+                imageLoader.execute {
+                    val background = loadBitmap(applicationContext, uri, VIDEO_WIDTH, VIDEO_HEIGHT)
+                        ?.let { bitmap -> resizeBitmapToFill(bitmap, VIDEO_WIDTH, VIDEO_HEIGHT) }
+                        ?: return@execute
+                    runOnUiThread {
+                        if (!isDestroyed) {
+                            cameraSurfaceTexture?.updateBackgroundImage(background)
+                        }
+                    }
                 }
             }
         }
+
+    private val imageLoader = Executors.newSingleThreadExecutor()
 
     companion object {
         private const val CAMERA_PERMISSION_CODE = 100
