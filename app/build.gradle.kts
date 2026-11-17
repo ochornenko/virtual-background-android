@@ -1,18 +1,17 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
 }
 
 android {
     namespace = "com.ml.virtualbackground"
-    compileSdk = 36
+    compileSdk = 37
     ndkVersion = "28.2.13676358"
-    buildToolsVersion = "36.0.0"
+    buildToolsVersion = "37.0.0"
 
     defaultConfig {
         applicationId = "com.ml.virtualbackground"
         minSdk = 29
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
@@ -32,9 +31,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
@@ -43,6 +39,12 @@ android {
     }
     buildFeatures {
         viewBinding = true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
