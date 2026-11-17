@@ -32,23 +32,24 @@ struct RGB {
     unsigned char blue;
 };
 
+// Converts an RGBA source image to RGB and centers it horizontally in the destination image.
 static void AddPadding(const std::vector<GLubyte> &srcImage, int32_t srcWidth, int32_t srcHeight,
                        std::vector<GLubyte> &dstImage, int32_t dstWidth, int32_t dstHeight,
                        GLubyte padValue = 0) {
-    // Ensure destination image has correct size and initialize with padding color (e.g., black)
-    dstImage.resize(dstWidth * dstHeight * 3, padValue);
+    // Reset the whole destination every frame, so the padding never keeps the previous mask
+    dstImage.assign(dstWidth * dstHeight * 3, padValue);
 
-    // Copy each row from the source image to the destination image
+    const int xOffset = (dstWidth - srcWidth) / 2;
+
     for (int y = 0; y < srcHeight; ++y) {
-        // Source row starting index
-        int srcIndex = y * srcWidth * 3;
+        for (int x = 0; x < srcWidth; ++x) {
+            const int srcIndex = (y * srcWidth + x) * 4;
+            const int dstIndex = (y * dstWidth + xOffset + x) * 3;
 
-        // Destination row starting index (we center it horizontally)
-        int dstIndex = y * dstWidth * 3 + ((dstWidth - srcWidth) / 2) * 3;
-
-        // Copy the row from source to destination
-        std::copy(srcImage.begin() + srcIndex, srcImage.begin() + srcIndex + (srcWidth * 3),
-                  dstImage.begin() + dstIndex);
+            dstImage[dstIndex] = srcImage[srcIndex];
+            dstImage[dstIndex + 1] = srcImage[srcIndex + 1];
+            dstImage[dstIndex + 2] = srcImage[srcIndex + 2];
+        }
     }
 }
 
@@ -137,6 +138,16 @@ CameraVirtualBackgroundProcessor::~CameraVirtualBackgroundProcessor() {
         m_outputFramebuffer = 0;
     }
 
+    if (m_resizeTexture != 0) {
+        glDeleteTextures(1, &m_resizeTexture);
+        m_resizeTexture = 0;
+    }
+
+    if (m_resizeFramebuffer != 0) {
+        glDeleteFramebuffers(1, &m_resizeFramebuffer);
+        m_resizeFramebuffer = 0;
+    }
+
     if (m_resizeProgram != 0) {
         DeleteProgram(m_resizeProgram);
     }
@@ -152,17 +163,17 @@ auto CameraVirtualBackgroundProcessor::Initialize(AAssetManager *assetManager,
                                            AASSET_MODE_BUFFER);
     CHECK(modelFile);
     const size_t bufferSize = AAsset_getLength(modelFile);
-    std::vector<const char *> buffer(bufferSize);
-    int status = AAsset_read(modelFile, buffer.data(), bufferSize);
+    m_modelBuffer.resize(bufferSize);
+    int status = AAsset_read(modelFile, m_modelBuffer.data(), bufferSize);
     AAsset_close(modelFile);
-    CHECK(status >= 0);
+    CHECK(status == static_cast<int>(bufferSize));
 
-    auto model = tflite::FlatBufferModel::BuildFromBuffer(
-            reinterpret_cast<const char *>(buffer.data()), bufferSize);
+    m_pModel = tflite::FlatBufferModel::BuildFromBuffer(m_modelBuffer.data(),
+                                                        m_modelBuffer.size());
 
-    CHECK(model);
+    CHECK(m_pModel);
     tflite::ops::builtin::BuiltinOpResolver resolver;
-    tflite::InterpreterBuilder(*model, resolver)(&m_pInterpreter);
+    tflite::InterpreterBuilder(*m_pModel, resolver)(&m_pInterpreter);
 
     CHECK(m_pInterpreter);
     CHECK(m_pInterpreter->AllocateTensors() == kTfLiteOk);
@@ -171,7 +182,7 @@ auto CameraVirtualBackgroundProcessor::Initialize(AAssetManager *assetManager,
     m_modelHeight = m_pInterpreter->tensor(tensorInputIndex)->dims->data[1];
     m_modelWidth = m_pInterpreter->tensor(tensorInputIndex)->dims->data[2];
 
-    m_modelData.reserve(m_modelWidth * m_modelHeight * 3);
+    m_modelData.resize(m_modelWidth * m_modelHeight * 3);
 
     m_outputTexture = outputTexture;
 
@@ -206,7 +217,8 @@ auto CameraVirtualBackgroundProcessor::SetParams(int32_t width, int32_t height,
     m_imageWidth = imageWidth;
     m_imageHeight = imageHeight;
 
-    m_imageData.reserve(m_imageWidth * m_imageHeight * 3);
+    m_imageData.resize(m_imageWidth * m_imageHeight * 4);
+    m_maskData.resize(m_imageWidth * m_imageHeight * 3);
 
     if (glIsFramebuffer(m_resizeFramebuffer)) {
         glDeleteFramebuffers(1, &m_resizeFramebuffer);
@@ -318,18 +330,19 @@ auto CameraVirtualBackgroundProcessor::Resize(GLuint vertexBuffer, GLuint textur
 
     glUseProgram(m_resizeProgram);
 
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
     glVertexAttribPointer(m_resizePosition, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat),
                           (const GLvoid *) (0 * sizeof(GLfloat)));
     glEnableVertexAttribArray(m_resizePosition);
     glVertexAttribPointer(m_resizeTexCoord, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat),
                           (const GLvoid *) (4 * sizeof(GLfloat)));
     glEnableVertexAttribArray(m_resizeTexCoord);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
     glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_SHORT, VertexIndices());
 }
 
 auto CameraVirtualBackgroundProcessor::Process() -> void {
-    glReadPixels(0, 0, m_imageWidth, m_imageHeight, GL_RGB, GL_UNSIGNED_BYTE, m_imageData.data());
+    // GL_RGBA/GL_UNSIGNED_BYTE is the only readback format guaranteed by OpenGL ES 2.0
+    glReadPixels(0, 0, m_imageWidth, m_imageHeight, GL_RGBA, GL_UNSIGNED_BYTE, m_imageData.data());
 
     AddPadding(m_imageData, m_imageWidth, m_imageHeight, m_modelData, m_modelWidth, m_modelHeight,
                0);
@@ -363,10 +376,10 @@ auto CameraVirtualBackgroundProcessor::Process() -> void {
         }
     }
 
-    RemovePadding(m_modelData, m_modelWidth, m_modelHeight, m_imageData, m_imageWidth,
+    RemovePadding(m_modelData, m_modelWidth, m_modelHeight, m_maskData, m_imageWidth,
                   m_imageHeight);
 
-    UpdateTexture(m_imageData, m_imageWidth, m_imageHeight, m_maskTexture);
+    UpdateTexture(m_maskData, m_imageWidth, m_imageHeight, m_maskTexture);
 }
 
 auto CameraVirtualBackgroundProcessor::Mix(int32_t width,
@@ -392,13 +405,13 @@ auto CameraVirtualBackgroundProcessor::Mix(int32_t width,
     glUniform1i(glGetUniformLocation(m_mixProgram, "uBackgroundTexture"), 1);  // 1 = GL_TEXTURE1
     glUniform1i(glGetUniformLocation(m_mixProgram, "uMaskTexture"), 2);  // 2 = GL_TEXTURE2
 
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
     glVertexAttribPointer(m_mixPosition, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat),
                           (const GLvoid *) (0 * sizeof(GLfloat)));
     glEnableVertexAttribArray(m_mixPosition);
     glVertexAttribPointer(m_mixTexCoord, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat),
                           (const GLvoid *) (4 * sizeof(GLfloat)));
     glEnableVertexAttribArray(m_mixTexCoord);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
     glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_SHORT, VertexIndices());
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);

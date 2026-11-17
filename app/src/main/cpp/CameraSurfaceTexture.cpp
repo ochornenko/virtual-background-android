@@ -108,13 +108,13 @@ auto CameraSurfaceTexture::UpdateTexImage(float *transformMatrix,
     glUseProgram(m_program);
     glUniformMatrix4fv(m_transformMatrix, 1, GL_FALSE, transformMatrix);
     glUniformMatrix4fv(m_rotationMatrix, 1, GL_FALSE, rotationMatrix);
+    glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
     glVertexAttribPointer(m_position, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat),
                           (const GLvoid *) (0 * sizeof(GLfloat)));
     glEnableVertexAttribArray(m_position);
     glVertexAttribPointer(m_texCoord, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat),
                           (const GLvoid *) (4 * sizeof(GLfloat)));
     glEnableVertexAttribArray(m_texCoord);
-    glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
     glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_SHORT, VertexIndices());
 
     m_pProcessor->Process(m_width, m_height, m_vertexBuffer);

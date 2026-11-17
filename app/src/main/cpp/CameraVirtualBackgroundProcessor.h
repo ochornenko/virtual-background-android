@@ -19,6 +19,10 @@
 #include <GLES2/gl2.h>
 #include <android/asset_manager.h>
 #include <tensorflow/lite/interpreter.h>
+#include <tensorflow/lite/model_builder.h>
+
+#include <memory>
+#include <vector>
 
 class CameraVirtualBackgroundProcessor {
 public:
@@ -56,10 +60,15 @@ private:
 
     static auto FragmentMixerShaderCode() -> const char *;
 
+    // Declared before m_pInterpreter: the interpreter reads weights from the model buffer,
+    // so both must outlive it (members are destroyed in reverse declaration order).
+    std::vector<char> m_modelBuffer;
+    std::unique_ptr<tflite::FlatBufferModel> m_pModel;
     std::unique_ptr<tflite::Interpreter> m_pInterpreter;
 
     std::vector<GLubyte> m_imageData;
     std::vector<GLubyte> m_modelData;
+    std::vector<GLubyte> m_maskData;
 
     GLuint m_texture;
     GLuint m_outputFramebuffer;

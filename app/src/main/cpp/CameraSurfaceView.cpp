@@ -37,6 +37,10 @@ CameraSurfaceView::~CameraSurfaceView() {
         glDeleteBuffers(1, &m_vertexBuffer);
         m_vertexBuffer = 0;
     }
+
+    if (m_program != 0) {
+        DeleteProgram(m_program);
+    }
 }
 
 auto CameraSurfaceView::OnSurfaceCreated() -> void {
@@ -104,13 +108,13 @@ auto CameraSurfaceView::DrawTexture(GLuint texture, int32_t textureWidth,
     glViewport(viewportX, viewportY, viewportWidth, viewportHeight);
 
     glUseProgram(m_program);
+    glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
     glVertexAttribPointer(m_position, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat),
                           (const GLvoid *) (0 * sizeof(GLfloat)));
     glEnableVertexAttribArray(m_position);
     glVertexAttribPointer(m_texCoord, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat),
                           (const GLvoid *) (4 * sizeof(GLfloat)));
     glEnableVertexAttribArray(m_texCoord);
-    glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
     glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_SHORT, VertexIndices());
 }
 
