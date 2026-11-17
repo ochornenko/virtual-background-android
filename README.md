@@ -191,7 +191,7 @@ Prerequisites:
 
 The pipeline consists of three files:
 
-- `tensorflow.Dockerfile` — defines an `Ubuntu 22.04` image with `OpenJDK 17`, `Bazel 6.5.0`, the `Android` SDK (API 34, build-tools 34.0.0), and `Android` NDK `21.4.7075529` preinstalled.
+- `tensorflow.Dockerfile` — defines an `Ubuntu 22.04` image with `OpenJDK 17`, `Bazel 6.5.0`, the `Android` SDK (API 36, build-tools 36.0.0), and `Android` NDK `21.4.7075529` preinstalled.
 - `build_tensorflow_inside_docker.sh` — runs inside the container; clones pinned versions of `TensorFlow` (`v2.17.0`) and `FlatBuffers` (`v24.3.25`), builds `//tensorflow/lite:tensorflowlite` with `Bazel` for the requested ABI(s), and copies the resulting `libtensorflowlite.so` to the mounted output directory.
 - `build_tensorflow_docker.sh` — host entrypoint; builds the Docker image (cached after the first run) and then runs the inner script in a container, mounting `third_party` as `/work` and `app/src/main/libs` as `/output`.
 
