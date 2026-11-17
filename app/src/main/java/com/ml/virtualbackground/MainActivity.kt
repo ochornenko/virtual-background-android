@@ -89,9 +89,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         imageLoader.shutdownNow()
-        cameraSurfaceTexture?.release()
         cameraSurfaceTexture = null
-        binding.cameraPreview.release()
         super.onDestroy()
     }
 

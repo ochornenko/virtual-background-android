@@ -85,10 +85,16 @@ class CameraSurfaceView : GLSurfaceView, GLSurfaceView.Renderer {
         calculateFps()
     }
 
-    fun release() {
-        nativeRelease(surfaceView)
+    override fun onDetachedFromWindow() {
+        // Stops and joins the GL thread, so nothing can be drawing with the native objects below.
+        // The GL objects themselves are freed together with the EGL context.
+        super.onDetachedFromWindow()
 
-        GLES20.glDeleteTextures(3, textures, 0)
+        surfaceTexture?.release()
+        surfaceTexture = null
+
+        nativeRelease(surfaceView)
+        surfaceView = 0L
     }
 
     private fun genTextures(textureCallback: (inputTexture: Int, outputTexture: Int, backgroundTexture: Int) -> Unit) {
