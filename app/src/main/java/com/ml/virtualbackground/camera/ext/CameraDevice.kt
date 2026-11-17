@@ -22,7 +22,7 @@ import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
 import android.os.Handler
 import android.view.Surface
-import com.google.android.gms.common.util.concurrent.HandlerExecutor
+import androidx.core.os.ExecutorCompat
 
 fun CameraDevice.getCaptureSession(
     targets: List<Surface>,
@@ -47,7 +47,7 @@ fun CameraDevice.getCaptureSession(
     val sessionConfiguration = SessionConfiguration(
         SessionConfiguration.SESSION_REGULAR,
         targets.map { OutputConfiguration(it) },
-        HandlerExecutor(handler.looper),
+        ExecutorCompat.create(handler),
         stateCallback
     )
 
