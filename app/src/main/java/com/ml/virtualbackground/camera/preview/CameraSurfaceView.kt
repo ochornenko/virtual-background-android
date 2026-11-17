@@ -49,6 +49,11 @@ class CameraSurfaceView : GLSurfaceView, GLSurfaceView.Renderer {
     }
 
     override fun onSurfaceCreated(gl: GL10, config: EGLConfig) {
+        // Called again only after the EGL context was lost; the previous objects belong to the
+        // dead context, so free them before this context allocates new GL names.
+        surfaceTexture?.release()
+        surfaceTexture = null
+
         genTextures { inputTexture, outputTexture, backgroundTexture ->
             surfaceTexture = CameraSurfaceTexture(
                 inputTexture,

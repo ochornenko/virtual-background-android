@@ -87,10 +87,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        if (hasCameraPermission()) {
-            cameraSurfaceTexture?.release()
-            binding.cameraPreview.release()
-        }
+        cameraSurfaceTexture?.release()
+        cameraSurfaceTexture = null
+        binding.cameraPreview.release()
         super.onDestroy()
     }
 

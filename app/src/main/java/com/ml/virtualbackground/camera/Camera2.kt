@@ -52,35 +52,61 @@ class Camera2(context: Context) : CameraApi {
 
     private var previewStarted = false
 
+    @Volatile
+    private var openRequested = false
+
+    @Volatile
+    private var availabilityCallback: CameraManager.AvailabilityCallback? = null
+
     @SuppressLint("MissingPermission")
     override fun open(facing: CameraFacing) {
         val cameraId = cameraManager.getCameraId(facing) ?: throw RuntimeException()
         val cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraId)
-        cameraManager.whenDeviceAvailable(cameraId, cameraHandler) {
-            cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
-                override fun onOpened(cameraDevice: CameraDevice) {
-                    val cameraAttributes = Attributes(cameraCharacteristics)
-                    this@Camera2.cameraDevice = cameraDevice
-                    this@Camera2.cameraAttributes = cameraAttributes
-                    cameraEvents?.get()?.onCameraOpened(cameraAttributes)
-                }
+        openRequested = true
+        availabilityCallback = cameraManager.whenDeviceAvailable(cameraId, cameraHandler) {
+            availabilityCallback = null
+            if (!openRequested) return@whenDeviceAvailable
 
-                override fun onDisconnected(cameraDevice: CameraDevice) {
-                    cameraDevice.close()
-                    this@Camera2.cameraDevice = null
-                    this@Camera2.captureSession = null
-                }
+            try {
+                cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
+                    override fun onOpened(cameraDevice: CameraDevice) {
+                        if (!openRequested) {
+                            cameraDevice.close()
+                            return
+                        }
+                        val cameraAttributes = Attributes(cameraCharacteristics)
+                        this@Camera2.cameraDevice = cameraDevice
+                        this@Camera2.cameraAttributes = cameraAttributes
+                        cameraEvents?.get()?.onCameraOpened(cameraAttributes)
+                    }
 
-                override fun onError(cameraDevice: CameraDevice, error: Int) {
-                    cameraDevice.close()
-                    this@Camera2.cameraDevice = null
-                    this@Camera2.captureSession = null
-                }
-            }, cameraHandler)
+                    override fun onDisconnected(cameraDevice: CameraDevice) {
+                        cameraDevice.close()
+                        this@Camera2.cameraDevice = null
+                        this@Camera2.captureSession = null
+                        cameraEvents?.get()?.onCameraError()
+                    }
+
+                    override fun onError(cameraDevice: CameraDevice, error: Int) {
+                        Log.e(TAG, "Camera error $error")
+                        cameraDevice.close()
+                        this@Camera2.cameraDevice = null
+                        this@Camera2.captureSession = null
+                        cameraEvents?.get()?.onCameraError()
+                    }
+                }, cameraHandler)
+            } catch (e: Exception) {
+                Log.e(TAG, e.toString())
+                cameraEvents?.get()?.onCameraError()
+            }
         }
     }
 
     override fun close() {
+        openRequested = false
+        availabilityCallback?.let { cameraManager.unregisterAvailabilityCallback(it) }
+        availabilityCallback = null
+
         cameraDevice?.close()
         cameraDevice = null
         captureSession?.close()

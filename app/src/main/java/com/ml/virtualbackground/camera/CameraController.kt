@@ -69,13 +69,39 @@ class CameraController private constructor(
 
     override fun onCameraOpened(cameraAttributes: CameraAttributes) {
         attributes = cameraAttributes
-        cameraOpenContinuation?.resume(Unit)
-        cameraOpenContinuation = null
+        takeOpenContinuation()?.resume(Unit)
+    }
+
+    override fun onCameraError() {
+        cancelPendingRequests()
     }
 
     override fun onPreviewStarted() {
-        previewStartContinuation?.resume(Unit)
-        previewStartContinuation = null
+        takePreviewStartContinuation()?.resume(Unit)
+    }
+
+    @Synchronized
+    private fun setOpenContinuation(continuation: Continuation<Unit>) {
+        cameraOpenContinuation = continuation
+    }
+
+    @Synchronized
+    private fun takeOpenContinuation(): Continuation<Unit>? =
+        cameraOpenContinuation.also { cameraOpenContinuation = null }
+
+    @Synchronized
+    private fun setPreviewStartContinuation(continuation: Continuation<Unit>) {
+        previewStartContinuation = continuation
+    }
+
+    @Synchronized
+    private fun takePreviewStartContinuation(): Continuation<Unit>? =
+        previewStartContinuation.also { previewStartContinuation = null }
+
+    private fun cancelPendingRequests() {
+        val error = IllegalStateException("Camera is not available")
+        takeOpenContinuation()?.resumeWithException(error)
+        takePreviewStartContinuation()?.resumeWithException(error)
     }
 
     fun resumePreview(surfaceTexture: CameraSurfaceTexture?) {
@@ -90,7 +116,7 @@ class CameraController private constructor(
 
     private suspend fun resume(surfaceTexture: CameraSurfaceTexture?): Unit =
         suspendCoroutine {
-            previewStartContinuation = it
+            setPreviewStartContinuation(it)
 
             val displayOrientation = orientationListener.currentRotation
             val attributes = attributes
@@ -126,22 +152,29 @@ class CameraController private constructor(
 
                 startPreview(surfaceTexture)
             } else {
-                it.resumeWithException(IllegalStateException())
-                previewStartContinuation = null
+                takePreviewStartContinuation()?.resumeWithException(IllegalStateException())
             }
         }
 
     fun openCamera() {
         GlobalScope.launch(cameraDispatcher) {
-            runBlocking {
-                open()
+            try {
+                runBlocking {
+                    open()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, e.toString())
             }
         }
     }
 
     private suspend fun open(): Unit = suspendCoroutine {
-        cameraOpenContinuation = it
-        open(cameraFacing)
+        setOpenContinuation(it)
+        try {
+            open(cameraFacing)
+        } catch (e: Exception) {
+            takeOpenContinuation()?.resumeWithException(e)
+        }
     }
 
     override fun open(facing: CameraFacing) {
@@ -152,6 +185,7 @@ class CameraController private constructor(
 
     override fun close() {
         lifecycleState = LifecycleState.STOPPED
+        cancelPendingRequests()
 
         cameraHandler.run { camera.close() }
     }
@@ -166,6 +200,7 @@ class CameraController private constructor(
 
     override fun stopPreview() {
         lifecycleState = LifecycleState.PAUSED
+        takePreviewStartContinuation()?.resumeWithException(IllegalStateException("Preview stopped"))
 
         cameraHandler.run { camera.stopPreview() }
     }

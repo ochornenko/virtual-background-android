@@ -38,8 +38,8 @@ fun CameraManager.whenDeviceAvailable(
     targetCameraId: String,
     handler: Handler,
     callback: () -> Unit
-) {
-    registerAvailabilityCallback(object : CameraManager.AvailabilityCallback() {
+): CameraManager.AvailabilityCallback {
+    val availabilityCallback = object : CameraManager.AvailabilityCallback() {
         override fun onCameraAvailable(cameraId: String) {
             if (cameraId == targetCameraId) {
                 unregisterAvailabilityCallback(this)
@@ -49,5 +49,7 @@ fun CameraManager.whenDeviceAvailable(
 
         override fun onCameraUnavailable(cameraId: String) {
         }
-    }, handler)
+    }
+    registerAvailabilityCallback(availabilityCallback, handler)
+    return availabilityCallback
 }

@@ -69,7 +69,10 @@ class CameraSurfaceTexture(
     }
 
     override fun release() {
+        if (surfaceTexture == 0L) return
         nativeRelease(surfaceTexture)
+        surfaceTexture = 0L
+        super.release()
     }
 
     fun setRotation(degrees: Int) {
