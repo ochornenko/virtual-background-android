@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <tuple>
 
 #include <tensorflow/lite/core/interpreter_builder.h>
@@ -281,7 +282,7 @@ CameraVirtualBackgroundProcessor::UpdateTexture(const std::vector<GLubyte> &pixe
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format,
+    glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(format), width, height, 0, format,
                  GL_UNSIGNED_BYTE, pixelData.data());
 
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -360,7 +361,7 @@ auto CameraVirtualBackgroundProcessor::Process() -> void {
         const float *row = data + y * m_modelWidth + xOffset;
         GLubyte *maskRow = m_maskData.data() + y * m_imageWidth;
         for (int x = 0; x < m_imageWidth; ++x) {
-            maskRow[x] = static_cast<GLubyte>(std::clamp(row[x], 0.0f, 1.0f) * 255.0f + 0.5f);
+            maskRow[x] = static_cast<GLubyte>(std::lrintf(std::clamp(row[x], 0.0f, 1.0f) * 255.0f));
         }
     }
 
