@@ -19,6 +19,8 @@
 #include "GLUtils.h"
 #include "Log.h"
 
+#include <algorithm>
+#include <chrono>
 #include <tuple>
 
 #include <tensorflow/lite/core/interpreter_builder.h>
@@ -26,11 +28,7 @@
 #include <tensorflow/lite/model_builder.h>
 #include <tensorflow/lite/core/api/op_resolver.h>
 
-struct RGB {
-    unsigned char red;
-    unsigned char green;
-    unsigned char blue;
-};
+static constexpr int32_t kInvokeLogInterval = 100;
 
 // Converts an RGBA source image to RGB and centers it horizontally in the destination image.
 static void AddPadding(const std::vector<GLubyte> &srcImage, int32_t srcWidth, int32_t srcHeight,
@@ -50,28 +48,6 @@ static void AddPadding(const std::vector<GLubyte> &srcImage, int32_t srcWidth, i
             dstImage[dstIndex + 1] = srcImage[srcIndex + 1];
             dstImage[dstIndex + 2] = srcImage[srcIndex + 2];
         }
-    }
-}
-
-static void RemovePadding(const std::vector<GLubyte> &srcImage, int32_t srcWidth, int32_t srcHeight,
-                          std::vector<GLubyte> &dstImage, int32_t dstWidth, int32_t dstHeight) {
-    // Ensure destination image has correct size
-    dstImage.resize(dstWidth * dstHeight * 3);
-
-    // Calculate the horizontal and vertical padding
-    int horizontalPadding = (srcWidth - dstWidth) / 2;
-
-    // Copy each row from the source image to the destination image
-    for (int y = 0; y < dstHeight; ++y) {
-        // Source row starting index (we skip the padding on both sides horizontally)
-        int srcIndex = y * srcWidth * 3 + horizontalPadding * 3;
-
-        // Destination row starting index
-        int dstIndex = y * dstWidth * 3;
-
-        // Copy the row from source to destination (cropping the padding)
-        std::copy(srcImage.begin() + srcIndex, srcImage.begin() + srcIndex + (dstWidth * 3),
-                  dstImage.begin() + dstIndex);
     }
 }
 
@@ -119,7 +95,9 @@ CameraVirtualBackgroundProcessor::CameraVirtualBackgroundProcessor()
           m_modelWidth(0),
           m_modelHeight(0),
           m_imageWidth(0),
-          m_imageHeight(0) {
+          m_imageHeight(0),
+          m_invokeTimeTotalUs(0),
+          m_invokeCount(0) {
 }
 
 CameraVirtualBackgroundProcessor::~CameraVirtualBackgroundProcessor() {
@@ -198,6 +176,13 @@ auto CameraVirtualBackgroundProcessor::Initialize(AAssetManager *assetManager,
 
     m_mixPosition = glGetAttribLocation(m_mixProgram, "aPosition");
     m_mixTexCoord = glGetAttribLocation(m_mixProgram, "aTexCoord");
+
+    // Texture units never change, so the sampler uniforms are set once
+    glUseProgram(m_mixProgram);
+    glUniform1i(glGetUniformLocation(m_mixProgram, "uTexture"), 0);
+    glUniform1i(glGetUniformLocation(m_mixProgram, "uBackgroundTexture"), 1);
+    glUniform1i(glGetUniformLocation(m_mixProgram, "uMaskTexture"), 2);
+    glUseProgram(0);
 }
 
 auto CameraVirtualBackgroundProcessor::SetParams(int32_t width, int32_t height,
@@ -218,7 +203,7 @@ auto CameraVirtualBackgroundProcessor::SetParams(int32_t width, int32_t height,
     m_imageHeight = imageHeight;
 
     m_imageData.resize(m_imageWidth * m_imageHeight * 4);
-    m_maskData.resize(m_imageWidth * m_imageHeight * 3);
+    m_maskData.resize(m_imageWidth * m_imageHeight);
 
     if (glIsFramebuffer(m_resizeFramebuffer)) {
         glDeleteFramebuffers(1, &m_resizeFramebuffer);
@@ -261,34 +246,42 @@ auto CameraVirtualBackgroundProcessor::SetParams(int32_t width, int32_t height,
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-auto CameraVirtualBackgroundProcessor::Invoke() const -> void {
+auto CameraVirtualBackgroundProcessor::Invoke() -> void {
     using clock = std::chrono::steady_clock;
 
     const auto start = clock::now();
-    {
-        const auto status = m_pInterpreter->Invoke();
-        assert(status == kTfLiteOk);
-    }
+    const auto status = m_pInterpreter->Invoke();
     const auto end = clock::now();
 
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    if (status != kTfLiteOk) {
+        LOGE("Tensorflow invoke failed with status %d\n", status);
+        return;
+    }
 
-    LOGI("Tensorflow invoke time %lld ms\n", time);
+    m_invokeTimeTotalUs += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    if (++m_invokeCount == kInvokeLogInterval) {
+        LOGI("Tensorflow invoke time %.1f ms (average of %d frames)\n",
+             static_cast<double>(m_invokeTimeTotalUs) / kInvokeLogInterval / 1000.0,
+             kInvokeLogInterval);
+        m_invokeTimeTotalUs = 0;
+        m_invokeCount = 0;
+    }
 }
 
 auto
 CameraVirtualBackgroundProcessor::UpdateTexture(const std::vector<GLubyte> &pixelData,
-                                                int32_t width,
-                                                int32_t height, GLuint texture) -> void {
+                                                int32_t width, int32_t height,
+                                                GLenum format, GLuint texture) -> void {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format,
                  GL_UNSIGNED_BYTE, pixelData.data());
 
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -360,26 +353,18 @@ auto CameraVirtualBackgroundProcessor::Process() -> void {
 
     auto tensorOutputIndex = m_pInterpreter->outputs()[0];
     auto data = (float *) m_pInterpreter->tensor(tensorOutputIndex)->data.data;
-    auto rgb = (RGB *) m_modelData.data();
 
-    for (int i = 0; i < m_modelHeight; i++) {
-        for (int j = 0; j < m_modelWidth; j++) {
-            // Get the probability value for the person class (assuming it's the first class)
-            float personProbability = data[i * m_modelWidth + j];
-
-            // Set the pixel color based on the probability threshold (e.g., 0.5)
-            if (personProbability > 0.5) {
-                rgb[j + i * m_modelWidth] = {255, 0, 0};  // Person color
-            } else {
-                rgb[j + i * m_modelWidth] = {0};  // Background color
-            }
+    // Keep the person probability (0..1) as an 8-bit mask, cropping the horizontal padding
+    const int xOffset = (m_modelWidth - m_imageWidth) / 2;
+    for (int y = 0; y < m_imageHeight; ++y) {
+        const float *row = data + y * m_modelWidth + xOffset;
+        GLubyte *maskRow = m_maskData.data() + y * m_imageWidth;
+        for (int x = 0; x < m_imageWidth; ++x) {
+            maskRow[x] = static_cast<GLubyte>(std::clamp(row[x], 0.0f, 1.0f) * 255.0f + 0.5f);
         }
     }
 
-    RemovePadding(m_modelData, m_modelWidth, m_modelHeight, m_maskData, m_imageWidth,
-                  m_imageHeight);
-
-    UpdateTexture(m_maskData, m_imageWidth, m_imageHeight, m_maskTexture);
+    UpdateTexture(m_maskData, m_imageWidth, m_imageHeight, GL_LUMINANCE, m_maskTexture);
 }
 
 auto CameraVirtualBackgroundProcessor::Mix(int32_t width,
@@ -400,10 +385,6 @@ auto CameraVirtualBackgroundProcessor::Mix(int32_t width,
     glBindTexture(GL_TEXTURE_2D, m_maskTexture);
 
     glUseProgram(m_mixProgram);
-
-    glUniform1i(glGetUniformLocation(m_mixProgram, "uTexture"), 0);  // 0 = GL_TEXTURE0
-    glUniform1i(glGetUniformLocation(m_mixProgram, "uBackgroundTexture"), 1);  // 1 = GL_TEXTURE1
-    glUniform1i(glGetUniformLocation(m_mixProgram, "uMaskTexture"), 2);  // 2 = GL_TEXTURE2
 
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
     glVertexAttribPointer(m_mixPosition, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat),
@@ -466,7 +447,8 @@ auto CameraVirtualBackgroundProcessor::FragmentMixerShaderCode() -> const char *
             "    vec4 backgroundColor = texture2D(uBackgroundTexture, vec2(vTexCoord.x, 1.0 - vTexCoord.y));\n"
             "    vec4 maskColor = texture2D(uMaskTexture, vec2(vTexCoord.x, 1.0 - vTexCoord.y));\n"
             "    vec4 inputColor = texture2D(uTexture, vTexCoord);\n"
-            "    gl_FragColor = mix(backgroundColor, inputColor, maskColor.r);\n"
+            "    float personWeight = smoothstep(0.3, 0.7, maskColor.r);\n"
+            "    gl_FragColor = mix(backgroundColor, inputColor, personWeight);\n"
             "}\n";
 
     return fragmentShader;

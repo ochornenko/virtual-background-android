@@ -38,7 +38,7 @@ public:
     auto Process(int width, int height, GLuint vertexBuffer) -> void;
 
 private:
-    auto Invoke() const -> void;
+    auto Invoke() -> void;
 
     auto Resize(GLuint vertexBuffer, GLuint textureId) const -> void;
 
@@ -47,7 +47,7 @@ private:
     auto Mix(int32_t width, int32_t height, GLuint vertexBuffer, GLuint textureId) const -> void;
 
     static auto UpdateTexture(const std::vector<GLubyte> &pixelData, int32_t width, int32_t height,
-                              GLuint texture) -> void;
+                              GLenum format, GLuint texture) -> void;
 
     static auto BindFramebuffer(GLuint framebuffer, GLuint texture,
                                 int32_t width, int32_t height) -> void;
@@ -87,4 +87,6 @@ private:
     int32_t m_modelHeight;
     int32_t m_imageWidth;
     int32_t m_imageHeight;
+    int64_t m_invokeTimeTotalUs;
+    int32_t m_invokeCount;
 };
